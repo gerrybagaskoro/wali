@@ -1,7 +1,8 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print, unnecessary_to_list_in_spreads, deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:wali_app/api/endpoint.dart';
@@ -170,7 +171,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           children: [
             const Text(
-              'STATISTIK LAPORAN',
+              'Statistik Laporan',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -247,9 +248,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ),
                   ),
-                  ..._reports
-                      .map((report) => _buildReportCard(report))
-                      .toList(),
+                  ..._reports.map((report) => _buildReportCard(report)),
                 ],
               ),
             ),
@@ -268,6 +267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header dengan avatar dan info user
             Row(
               children: [
                 CircleAvatar(
@@ -311,14 +311,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
             const SizedBox(height: 12),
+
+            // Judul laporan
             Text(
               report.judul,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+
+            // Isi laporan
             Text(report.isi),
             const SizedBox(height: 8),
-            if (report.lokasi != null)
+
+            // Lokasi
+            if (report.lokasi != null && report.lokasi!.isNotEmpty)
               Row(
                 children: [
                   const Icon(Icons.location_on, size: 14, color: Colors.grey),
@@ -329,7 +335,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ],
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+
+            // GAMBAR LAPORAN - TAMBAHAN INI
+            if (report.imageUrl != null && report.imageUrl!.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Foto Lampiran:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: report.imageUrl!,
+                      width: double.infinity,
+                      height: 320,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        height: 320,
+                        color: Colors.grey.shade200,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        height: 320,
+                        color: Colors.grey.shade200,
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, color: Colors.grey, size: 40),
+                            SizedBox(height: 8),
+                            Text(
+                              'Gagal memuat gambar',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+
+            // Tanggal laporan
             Text(
               'Dilaporkan: ${_formatDate(report.createdAt)}',
               style: const TextStyle(fontSize: 10, color: Colors.grey),
@@ -346,7 +400,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     items: ['masuk', 'proses', 'selesai'].map((status) {
                       return DropdownMenuItem(
                         value: status,
-                        child: Text(status.toUpperCase()),
+                        child: Text(
+                          status.toUpperCase(),
+                          style: TextStyle(
+                            color: status == 'masuk'
+                                ? Colors.orange
+                                : status == 'proses'
+                                ? Colors.blue
+                                : Colors.green,
+                          ),
+                        ),
                       );
                     }).toList(),
                     onChanged: (newStatus) {

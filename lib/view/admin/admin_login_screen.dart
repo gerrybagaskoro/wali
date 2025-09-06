@@ -65,7 +65,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: ${response.body}')),
+          SnackBar(content: Text('Masuk gagal: ${response.body}')),
         );
       }
     } catch (e) {
@@ -81,10 +81,19 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login Admin RT/RW')),
-      body: SingleChildScrollView(
-        child: Padding(
+    return WillPopScope(
+      onWillPop: () async {
+        // Ketika tombol back ditekan, langsung ke welcome screen
+        // bukan kembali ke login user
+        context.pushReplacementNamed('/welcome');
+        return false; // Mencegah default back behavior
+      },
+      child: Scaffold(
+        // appBar: AppBar(
+        //   title: const Text('Login Admin RT/RW'),
+        //   automaticallyImplyLeading: false, // Hilangkan tombol back
+        // ),
+        body: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Form(
             key: _formKey,
@@ -98,12 +107,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Login Admin RT/RW',
+                  'Selamat datang kembali!',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Gunakan akun admin yang terdaftar di sistem',
+                  'Gunakan akun pengelola yang terdaftar di sistem',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -111,12 +120,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(
-                    labelText: 'Email Admin',
+                    labelText: 'Surel',
                     prefixIcon: Icon(Icons.email),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Email harus diisi';
+                      return 'Surel harus diisi';
                     }
                     return null;
                   },
@@ -126,12 +135,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Password',
+                    labelText: 'Kata Sandi',
                     prefixIcon: Icon(Icons.lock),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Password harus diisi';
+                      return 'Kata Sandi harus diisi';
                     }
                     return null;
                   },
@@ -146,16 +155,17 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           minimumSize: const Size(double.infinity, 50),
                         ),
                         child: const Text(
-                          'LOGIN ADMIN',
+                          'Masuk sebgai Pengelola',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
                 const SizedBox(height: 15),
                 TextButton(
                   onPressed: () {
+                    // Kembali ke welcome screen, bukan login user
                     context.pushReplacementNamed('/login');
                   },
-                  child: const Text('Login sebagai Warga'),
+                  child: const Text('Kembali ke Halaman Masuk Warga'),
                 ),
               ],
             ),

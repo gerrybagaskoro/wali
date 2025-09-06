@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: ${response.body}')),
+          SnackBar(content: Text('Masuk gagal: ${response.body}')),
         );
       }
     } catch (e) {
@@ -81,12 +81,12 @@ class _LoginScreenState extends State<LoginScreen> {
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Surel',
                   prefixIcon: Icon(Icons.email),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email harus diisi';
+                    return 'Surel harus diisi';
                   }
                   return null;
                 },
@@ -96,12 +96,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Password',
+                  labelText: 'Kata Sandi',
                   prefixIcon: Icon(Icons.lock),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Password harus diisi';
+                    return 'Kata Sandi harus diisi';
                   }
                   return null;
                 },
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         minimumSize: const Size(double.infinity, 50),
                       ),
                       child: const Text(
-                        'LOGIN',
+                        'Masuk',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
@@ -124,9 +124,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 15),
               TextButton(
                 onPressed: () {
-                  context.pushNamed('/admin-login');
+                  context.pushReplacementNamed('/admin-login');
                 },
-                child: const Text('Login sebagai Admin RT/RW'),
+                child: const Text('Masuk sebagai Admin RT/RW'),
               ),
               const SizedBox(height: 15),
               TextButton(
