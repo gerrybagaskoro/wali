@@ -6,11 +6,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/model/auth/auth_response.dart' as auth_model;
 import 'package:wali_app/model/report/report_list_response.dart'
     as report_model;
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/date_utils.dart';
 import 'package:wali_app/view/user/profile_screen.dart';
 import 'package:wali_app/view/user/user_add_report.dart';
 
@@ -58,6 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    initializeDateFormatting('id_ID', null);
     _loadUserData();
     _loadReports();
     _scrollController.addListener(_onScroll);
@@ -182,8 +185,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin logout?'),
+          title: const Text('Konfirmasi Keluar'),
+          content: const Text('Apakah Anda yakin ingin keluar akun?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -191,7 +194,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+              child: const Text('Keluar', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -333,7 +336,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.red),
               onPressed: _showLogoutDialog,
-              tooltip: 'Logout',
+              tooltip: 'Keluar',
             ),
           ],
         ),
@@ -347,16 +350,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: CarouselSlider(
         options: CarouselOptions(
           height: 160, // Tinggi konten
+
           autoPlay: true,
           enlargeCenterPage: true,
-          enlargeFactor: 0.2, // Kurangi pembesaran
+          enlargeFactor: 0.25, // Kurangi pembesaran
           viewportFraction: 0.75, // Kurangi lebar viewport
           autoPlayInterval: const Duration(seconds: 5),
           autoPlayCurve: Curves.fastOutSlowIn,
         ),
         items: _carouselItems.map((item) {
           return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.green.shade50,
               borderRadius: BorderRadius.circular(16),
@@ -365,7 +369,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 4,
-                  offset: Offset(0, 2),
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -636,7 +640,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // TIMESTAMP
             Text(
-              'Dibuat: ${_formatDate(report.createdAt)}',
+              'Dilaporkan: ${_formatDate(report.createdAt)}', // Ini akan tampil "Sabtu, 6 September 2025 14:30"
               style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
           ],
@@ -648,7 +652,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _formatDate(String dateString) {
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+      return IndonesianDateUtils.formatDateTime(date);
     } catch (e) {
       return dateString;
     }

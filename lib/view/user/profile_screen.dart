@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:wali_app/extension/navigation.dart';
 import 'package:wali_app/model/report/report_list_response.dart';
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/date_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,10 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    // Cara 1: Gunakan extension jika sudah ditambahkan
-    // final user = await UserAuthResponse.getSavedUser();
-
-    // Cara 2: Alternatif langsung pakai PreferenceHandler
     final userData = await PreferenceHandler.getUserData();
     if (userData != null) {
       setState(() {
@@ -37,10 +34,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    // Cara 1: Gunakan extension jika sudah ditambahkan
-    // await UserAuthResponse.logout();
-
-    // Cara 2: Alternatif langsung pakai PreferenceHandler
     await PreferenceHandler.clearAll();
 
     if (mounted) {
@@ -96,10 +89,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onPressed: _logout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      minimumSize: const Size(double.infinity, 50),
+                      minimumSize: const Size(double.infinity, 60),
                     ),
                     child: const Text(
-                      'LOGOUT',
+                      'Keluar Akun',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -122,6 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return IndonesianDateUtils.formatFullDate(date);
   }
 }

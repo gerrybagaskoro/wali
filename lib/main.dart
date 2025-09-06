@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/view/splash_screen.dart';
 import 'package:wali_app/view/user/dashboard_screen.dart';
@@ -8,7 +9,9 @@ import 'package:wali_app/view/user/register_screen.dart';
 import 'package:wali_app/view/user/user_add_report.dart';
 import 'package:wali_app/view/welcome_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
   runApp(const MyApp());
 }
 
