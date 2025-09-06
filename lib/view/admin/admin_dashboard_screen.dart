@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/date_symbol_data_file.dart';
+import 'package:intl/intl.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/model/report/report_list_response.dart';
 import 'package:wali_app/preference/shared_preference.dart';
@@ -24,6 +26,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    initializeDateFormatting('id_ID', '');
     _loadData();
   }
 
@@ -222,7 +225,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard Admin RT/RW'),
+        title: const Text('Dashboard Admin Wali'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
           IconButton(
@@ -241,7 +244,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text(
-                      'DAFTAR LAPORAN WARGA',
+                      'Daftar Laporan Warga',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -343,7 +346,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Foto Lampiran:',
+                    'Foto Terlampir:',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -352,15 +355,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: CachedNetworkImage(
                       imageUrl: report.imageUrl!,
                       width: double.infinity,
-                      height: 320,
+                      height: 340,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        height: 320,
+                        height: 340,
                         color: Colors.grey.shade200,
                         child: const Center(child: CircularProgressIndicator()),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        height: 320,
+                        height: 340,
                         color: Colors.grey.shade200,
                         child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -385,9 +388,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
             // Tanggal laporan
             Text(
-              'Dilaporkan: ${_formatDate(report.createdAt)}',
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              'Dilaporkan: ${_formatDateIndonesian(report.createdAt)}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
+
+            // ✅ TAMBAHKAN TANGGAL UPDATE JIKA BERBEDA
+            if (report.updatedAt != DateTime.parse(report.createdAt))
+              Text(
+                'Diperbarui: ${_formatDateIndonesian(report.updatedAt.toString())}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  // fontStyle: FontStyle.italic,
+                ),
+              ),
+
             const SizedBox(height: 12),
 
             // Action Buttons untuk Admin
@@ -418,7 +433,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       }
                     },
                     decoration: const InputDecoration(
-                      labelText: 'Ubah Status',
+                      labelText: 'Ubah Status Laporan',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 8),
                     ),
@@ -441,10 +456,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  String _formatDate(String dateString) {
+  // ✅ METHOD UNTUK FORMAT TANGGAL BAHASA INDONESIA
+  String _formatDateIndonesian(String dateString) {
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+      final format = DateFormat('EEEE, d MMMM yyyy HH:mm', 'id_ID');
+      return format.format(date);
     } catch (e) {
       return dateString;
     }
