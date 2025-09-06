@@ -1,43 +1,36 @@
-// To parse this JSON data, do
-//
-//     final reportDetailResponse = reportDetailResponseFromJson(jsonString);
-
-import 'dart:convert';
-
-ReportDetailResponse reportDetailResponseFromJson(String str) =>
-    ReportDetailResponse.fromJson(json.decode(str));
-
-String reportDetailResponseToJson(ReportDetailResponse data) =>
-    json.encode(data.toJson());
-
+// report_detail_response.dart
 class ReportDetailResponse {
-  String message;
-  Data data;
+  final String message;
+  final ReportDetailData data;
 
   ReportDetailResponse({required this.message, required this.data});
 
-  factory ReportDetailResponse.fromJson(Map<String, dynamic> json) =>
-      ReportDetailResponse(
-        message: json["message"],
-        data: Data.fromJson(json["data"]),
-      );
+  factory ReportDetailResponse.fromJson(Map<String, dynamic> json) {
+    return ReportDetailResponse(
+      message: json['message'] as String,
+      data: ReportDetailData.fromJson(json['data'] as Map<String, dynamic>),
+    );
+  }
 
-  Map<String, dynamic> toJson() => {"message": message, "data": data.toJson()};
+  Map<String, dynamic> toJson() {
+    return {'message': message, 'data': data.toJson()};
+  }
 }
 
-class Data {
+class ReportDetailData {
   int id;
   String userId;
   String judul;
   String isi;
   String status;
-  String createdAt; // ✅ UBAH KE String
-  String updatedAt; // ✅ UBAH KE String
-  String imagePath;
-  String lokasi;
-  String imageUrl;
+  String createdAt;
+  String updatedAt;
+  String? imagePath;
+  String? lokasi;
+  String? imageUrl;
+  ReportUser? user;
 
-  Data({
+  ReportDetailData({
     required this.id,
     required this.userId,
     required this.judul,
@@ -45,34 +38,83 @@ class Data {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
-    required this.imagePath,
-    required this.lokasi,
-    required this.imageUrl,
+    this.imagePath,
+    this.lokasi,
+    this.imageUrl,
+    this.user,
   });
 
-  factory Data.fromJson(Map<String, dynamic> json) => Data(
-    id: json["id"],
-    userId: json["user_id"],
-    judul: json["judul"],
-    isi: json["isi"],
-    status: json["status"],
-    createdAt: json["created_at"], // ✅ TETAP STRING
-    updatedAt: json["updated_at"], // ✅ TETAP STRING
-    imagePath: json["image_path"],
-    lokasi: json["lokasi"],
-    imageUrl: json["image_url"],
-  );
+  factory ReportDetailData.fromJson(Map<String, dynamic> json) {
+    return ReportDetailData(
+      id: json['id'] as int,
+      userId: json['user_id'] as String,
+      judul: json['judul'] as String,
+      isi: json['isi'] as String,
+      status: json['status'] as String,
+      createdAt: json['created_at'] as String,
+      updatedAt: json['updated_at'] as String,
+      imagePath: json['image_path'] as String?,
+      lokasi: json['lokasi'] as String?,
+      imageUrl: json['image_url'] as String?,
+      user: json['user'] != null
+          ? ReportUser.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
+    );
+  }
 
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "user_id": userId,
-    "judul": judul,
-    "isi": isi,
-    "status": status,
-    "created_at": createdAt,
-    "updated_at": updatedAt,
-    "image_path": imagePath,
-    "lokasi": lokasi,
-    "image_url": imageUrl,
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'judul': judul,
+      'isi': isi,
+      'status': status,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'image_path': imagePath,
+      'lokasi': lokasi,
+      'image_url': imageUrl,
+      'user': user?.toJson(),
+    };
+  }
+}
+
+class ReportUser {
+  final int id;
+  final String name;
+  final String email;
+  final dynamic emailVerifiedAt;
+  final String createdAt;
+  final String updatedAt;
+
+  ReportUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.emailVerifiedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory ReportUser.fromJson(Map<String, dynamic> json) {
+    return ReportUser(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      emailVerifiedAt: json['email_verified_at'],
+      createdAt: json['created_at'] as String,
+      updatedAt: json['updated_at'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'email_verified_at': emailVerifiedAt,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
+  }
 }

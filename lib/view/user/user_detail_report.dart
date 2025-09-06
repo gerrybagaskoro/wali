@@ -8,8 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:wali_app/api/endpoint.dart';
-import 'package:wali_app/model/report/report_detail_response.dart'; // ✅ IMPORT YANG BENAR
-import 'package:wali_app/model/report/report_list_response.dart' as auth_model;
+import 'package:wali_app/model/report/report_detail_response.dart';
+import 'package:wali_app/model/report/report_update_response.dart';
 import 'package:wali_app/preference/shared_preference.dart';
 
 class DetailLaporanScreen extends StatefulWidget {
@@ -27,13 +27,12 @@ class DetailLaporanScreen extends StatefulWidget {
 }
 
 class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
-  Data? _laporanDetail; // ✅ PERBAIKAN: ReportDetail → Data
+  ReportDetailData? _laporanDetail;
   bool _isLoading = true;
   bool _isEditing = false;
   final _judulController = TextEditingController();
   final _isiController = TextEditingController();
   final _lokasiController = TextEditingController();
-  auth_model.User? _user;
 
   @override
   void initState() {
@@ -45,54 +44,70 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
   Future<void> _loadLaporanDetail() async {
     try {
       final token = await PreferenceHandler.getToken();
-      if (token == null) return;
+      if (token == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Token tidak valid')));
+        return;
+      }
 
-      // 1. Load detail laporan
-      final response = await http.get(
-        Uri.parse('${Endpoint.laporan}/${widget.laporanId}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final url = Uri.parse('${Endpoint.laporan}/${widget.laporanId}');
+      print('🔍 DEBUG - Loading detail from: $url');
+
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      print('🔍 DEBUG - Detail Status: ${response.statusCode}');
+      print('🔍 DEBUG - Detail Body: ${response.body}');
+
+      // Cek jika response HTML (error)
+      if (response.body.contains('<!DOCTYPE html>')) {
+        throw Exception('Server mengembalikan HTML bukan JSON');
+      }
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        final detailResponse = ReportDetailResponse.fromJson(responseData);
 
-        // 2. Load user data berdasarkan user_id
-        final userData = await PreferenceHandler.getUserData();
-        if (userData != null) {
-          final allUsers = json.decode(userData);
-          // Cari user yang sesuai dengan user_id
-          final userJson = allUsers.firstWhere(
-            (user) => user['id'].toString() == detailResponse.data.userId,
-            orElse: () => null,
-          );
-
-          if (userJson != null) {
-            _user = auth_model.User.fromJson(userJson);
-          }
+        if (responseData['data'] != null) {
+          final detailResponse = ReportDetailResponse.fromJson(responseData);
+          setState(() {
+            _laporanDetail = detailResponse.data;
+            _judulController.text = _laporanDetail!.judul;
+            _isiController.text = _laporanDetail!.isi;
+            _lokasiController.text = _laporanDetail!.lokasi ?? '';
+            _isLoading = false;
+          });
+        } else {
+          throw Exception('Data tidak ditemukan dalam response');
         }
-
-        setState(() {
-          _laporanDetail = detailResponse.data;
-          _judulController.text = _laporanDetail!.judul;
-          _isiController.text = _laporanDetail!.isi;
-          _lokasiController.text = _laporanDetail!.lokasi;
-          _isLoading = false;
-        });
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
-      print('Error loading detail: $e');
+      print('❌ Error loading detail: $e');
       setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat detail: $e')));
     }
   }
 
   Future<void> _updateLaporan() async {
     try {
       final token = await PreferenceHandler.getToken();
-      if (token == null) return;
+      if (token == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Token tidak valid')));
+        return;
+      }
 
       final response = await http.put(
         Uri.parse('${Endpoint.laporan}/${widget.laporanId}'),
@@ -107,33 +122,47 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         }),
       );
 
+      print('🔍 DEBUG - Update Response: ${response.statusCode}');
+      print('🔍 DEBUG - Update Body: ${response.body}');
+
+      if (response.body.contains('<!DOCTYPE html>')) {
+        throw Exception('Server mengembalikan error HTML');
+      }
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
 
-        if (responseData['message'] == 'Laporan berhasil diperbarui') {
-          final updatedData = Data.fromJson(
-            responseData['data'],
-          ); // ✅ Data adalah class yang benar
+        // Method 1: Buat object baru
+        final updatedData = ReportUpdateData.fromJson(responseData['data']);
 
-          setState(() {
-            _laporanDetail = updatedData;
-            _isEditing = false;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Laporan berhasil diperbarui')),
+        setState(() {
+          _laporanDetail = ReportDetailData(
+            id: updatedData.id,
+            userId: updatedData.userId,
+            judul: updatedData.judul,
+            isi: updatedData.isi,
+            status: updatedData.status,
+            createdAt: updatedData.createdAt,
+            updatedAt: updatedData.updatedAt,
+            imagePath: updatedData.imagePath,
+            lokasi: updatedData.lokasi,
+            imageUrl: updatedData.imageUrl,
+            user: _laporanDetail?.user, // Pertahankan data user
           );
-        }
+          _isEditing = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Laporan berhasil diperbarui')),
+        );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${response.body}')));
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Error updating: $e');
+      print('❌ Error updating: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('Gagal memperbarui: $e')));
     }
   }
 
@@ -183,7 +212,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 radius: 20,
                 backgroundColor: Colors.green.shade100,
                 child: Text(
-                  'W', // Default avatar
+                  'W',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -194,7 +223,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'User ID: ${_laporanDetail!.userId}', // Tampilkan user_id
+                  'User ID: ${_laporanDetail!.userId}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -233,14 +262,15 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                     border: OutlineInputBorder(),
                   ),
                 )
-              : _laporanDetail!.lokasi.isNotEmpty
+              : _laporanDetail!.lokasi != null &&
+                    _laporanDetail!.lokasi!.isNotEmpty
               ? Row(
                   children: [
                     const Icon(Icons.location_on, size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        _laporanDetail!.lokasi,
+                        _laporanDetail!.lokasi ?? '-',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ),
@@ -263,7 +293,8 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
           const SizedBox(height: 16),
 
           // Gambar
-          if (_laporanDetail!.imageUrl.isNotEmpty)
+          if (_laporanDetail!.imageUrl != null &&
+              _laporanDetail!.imageUrl!.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -275,7 +306,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: CachedNetworkImage(
-                    imageUrl: _laporanDetail!.imageUrl,
+                    imageUrl: _laporanDetail!.imageUrl!,
                     width: double.infinity,
                     height: 200,
                     fit: BoxFit.cover,
@@ -313,7 +344,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
             ],
           ),
 
-          // ✅ TAMBAHKAN INFO "TERAKHIR DIPERBARUI"
+          // Info "Terakhir diperbarui"
           if (_laporanDetail!.updatedAt != _laporanDetail!.createdAt)
             Text(
               'Terakhir diperbarui: ${_formatDate(_laporanDetail!.updatedAt)}',
