@@ -77,6 +77,7 @@ class User {
 
 // EXTENSIONS - PASTIKAN ADA DI BAWAH
 extension AuthResponseExtensions on UserAuthResponse {
+  /// Menyimpan semua data authentication ke SharedPreferences
   Future<void> saveToPreferences() async {
     await PreferenceHandler.saveToken(data.token);
     await PreferenceHandler.saveLogin(true);
@@ -84,12 +85,15 @@ extension AuthResponseExtensions on UserAuthResponse {
   }
 }
 
+// EXTENSION UNTUK STATIC METHODS
 extension AuthResponseStaticExtensions on UserAuthResponse {
+  /// Mengecek apakah user sudah login berdasarkan token yang tersimpan
   static Future<bool> isLoggedIn() async {
     final token = await PreferenceHandler.getToken();
     return token != null;
   }
 
+  /// Mengambil data user yang tersimpan dari SharedPreferences
   static Future<User?> getSavedUser() async {
     final userData = await PreferenceHandler.getUserData();
     if (userData != null) {
@@ -98,6 +102,12 @@ extension AuthResponseStaticExtensions on UserAuthResponse {
     return null;
   }
 
+  /// Mengambil token yang tersimpan
+  static Future<String?> getSavedToken() async {
+    return await PreferenceHandler.getToken();
+  }
+
+  /// Logout: Hapus semua data authentication
   static Future<void> logout() async {
     await PreferenceHandler.clearAll();
   }

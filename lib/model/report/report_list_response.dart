@@ -34,7 +34,7 @@ class Datum {
   String judul;
   String isi;
   String status;
-  DateTime createdAt;
+  final String createdAt;
   DateTime updatedAt;
   String? imagePath;
   String? lokasi;
@@ -61,7 +61,7 @@ class Datum {
     judul: json["judul"],
     isi: json["isi"],
     status: json["status"],
-    createdAt: DateTime.parse(json["created_at"]),
+    createdAt: json["created_at"],
     updatedAt: DateTime.parse(json["updated_at"]),
     imagePath: json["image_path"],
     lokasi: json["lokasi"],
@@ -75,7 +75,7 @@ class Datum {
     "judul": judul,
     "isi": isi,
     "status": status,
-    "created_at": createdAt.toIso8601String(),
+    "created_at": createdAt,
     "updated_at": updatedAt.toIso8601String(),
     "image_path": imagePath,
     "lokasi": lokasi,
