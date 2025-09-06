@@ -1,8 +1,7 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print
+// ignore_for_file: use_build_context_synchronously, avoid_print, deprecated_member_use
 
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +14,7 @@ import 'package:wali_app/preference/shared_preference.dart';
 import 'package:wali_app/utils/date_utils.dart';
 import 'package:wali_app/view/user/profile_screen.dart';
 import 'package:wali_app/view/user/user_add_report.dart';
+import 'package:wali_app/view/user/user_detail_report.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -493,34 +493,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final isMyReport = report.user.id == _currentUser?.id;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // HEADER - Avatar, Nama, Status
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: isMyReport
-                      ? Colors.green.shade100
-                      : Colors.blue.shade100,
-                  child: Text(
-                    report.user.name[0].toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isMyReport ? Colors.green : Colors.blue,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailLaporanScreen(
+              laporanId: report.id,
+              isMyReport: isMyReport,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      splashColor: Colors.green.withOpacity(0.2), // ✅ SPLASH COLOR
+      highlightColor: Colors.green.withOpacity(0.1), // ✅ HIGHLIGHT COLOR
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: isMyReport
+                        ? Colors.green.shade100
+                        : Colors.blue.shade100,
+                    child: Text(
+                      report.user.name[0].toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isMyReport ? Colors.green : Colors.blue,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Tooltip(
-                    message: report.user.name,
+                  const SizedBox(width: 8),
+                  Expanded(
                     child: Text(
                       report.user.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -528,36 +542,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                Chip(
-                  label: Text(
-                    report.status.toUpperCase(),
-                    style: const TextStyle(fontSize: 10, color: Colors.white),
+                  Chip(
+                    label: Text(
+                      report.status.toUpperCase(),
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                    backgroundColor: statusColor,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                   ),
-                  backgroundColor: statusColor,
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                report.judul,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // JUDUL
-            Text(
-              report.judul,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-
-            // LOKASI - DENGAN OVERFLOW PROTECTION
-            if (report.lokasi != null && report.lokasi!.isNotEmpty) ...[
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Tooltip(
-                      message: report.lokasi!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              if (report.lokasi != null) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
                       child: Text(
                         report.lokasi!,
                         style: const TextStyle(
@@ -568,82 +582,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              Text(report.isi, maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 8),
-            ],
 
-            // DESKRIPSI
-            Text(report.isi, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 8),
-
-            // GAMBAR
-            // if (report.imageUrl != null) ...[
-            //   ClipRRect(
-            //     borderRadius: BorderRadius.circular(8),
-            //     child: Image.network(
-            //       report.imageUrl!,
-            //       height: 320,
-            //       width: double.infinity,
-            //       fit: BoxFit.cover,
-            //       loadingBuilder: (context, child, loadingProgress) {
-            //         if (loadingProgress == null) return child;
-            //         return Container(
-            //           height: 200,
-            //           color: Colors.grey.shade200,
-            //           child: Center(
-            //             child: CircularProgressIndicator(
-            //               value: loadingProgress.expectedTotalBytes != null
-            //                   ? loadingProgress.cumulativeBytesLoaded /
-            //                         loadingProgress.expectedTotalBytes!
-            //                   : null,
-            //             ),
-            //           ),
-            //         );
-            //       },
-            //       errorBuilder: (context, error, stackTrace) {
-            //         return Container(
-            //           height: 200,
-            //           color: Colors.grey.shade200,
-            //           child: const Icon(Icons.error, color: Colors.grey),
-            //         );
-            //       },
-            //     ),
-            //   ),
-            //   const SizedBox(height: 8),
-            // ],
-            // DI _buildReportCard, UBAH BAGIAN GAMBAR:
-            if (report.imageUrl != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  // GUNAKAN CachedNetworkImage
-                  imageUrl: report.imageUrl!,
-                  height: 360,
+              // ✅ TAMPILKAN GAMBAR UNTUK SEMUA LAPORAN
+              if (report.imageUrl != null) ...[
+                Container(
+                  height: 320,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 360,
-                    color: Colors.grey.shade200,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 360,
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.error, color: Colors.grey),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: NetworkImage(report.imageUrl!),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
+                const SizedBox(height: 8),
+              ],
 
-            // TIMESTAMP
-            Text(
-              'Dilaporkan: ${_formatDate(report.createdAt)}', // Ini akan tampil "Sabtu, 6 September 2025 14:30"
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-            ),
-          ],
+              Text(
+                'Dibuat: ${_formatDate(report.createdAt)}',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ),
     );
