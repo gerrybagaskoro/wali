@@ -20,16 +20,19 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLoginStatus() async {
-    await Future.delayed(const Duration(seconds: 2)); // Durasi splash
+    await Future.delayed(const Duration(seconds: 2));
 
     final isLoggedIn = await PreferenceHandler.getLogin();
     final token = await PreferenceHandler.getToken();
+    final isAdmin = await PreferenceHandler.getIsAdmin() ?? false;
 
     if (isLoggedIn == true && token != null) {
-      // Auto login berhasil, langsung ke dashboard
-      context.pushReplacementNamed('/dashboard');
+      if (isAdmin) {
+        context.pushReplacementNamed('/admin-dashboard');
+      } else {
+        context.pushReplacementNamed('/dashboard');
+      }
     } else {
-      // Belum login, ke halaman login
       context.pushReplacementNamed('/login');
     }
   }

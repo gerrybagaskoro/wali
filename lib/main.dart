@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:wali_app/api/endpoint.dart';
+import 'package:wali_app/view/admin/admin_dashboard_screen.dart';
+import 'package:wali_app/view/admin/admin_login_screen.dart';
 import 'package:wali_app/view/splash_screen.dart';
 import 'package:wali_app/view/user/dashboard_screen.dart';
 import 'package:wali_app/view/user/login_screen.dart';
@@ -35,6 +37,8 @@ class MyApp extends StatelessWidget {
         '/splash': (context) => const SplashScreen(),
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/admin-login': (context) => const AdminLoginScreen(),
+        '/admin-dashboard': (context) => const AdminDashboardScreen(),
         '/register': (context) => const RegisterScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/profile': (context) => const ProfileScreen(),

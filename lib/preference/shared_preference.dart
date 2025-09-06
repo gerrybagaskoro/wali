@@ -6,6 +6,7 @@ class PreferenceHandler {
   static const String loginKey = "login";
   static const String tokenKey = "token";
   static const String userDataKey = "user_data"; // Key untuk simpan data user
+  static const String isAdminKey = "is_admin";
 
   // static void saveLogin() async {
   //   final prefs = await SharedPreferences.getInstance();
@@ -61,5 +62,26 @@ class PreferenceHandler {
     await prefs.remove(loginKey);
     await prefs.remove(tokenKey);
     await prefs.remove(userDataKey);
+  }
+
+  // Simpan status admin
+  static Future<void> saveIsAdmin(bool isAdmin) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(isAdminKey, isAdmin);
+  }
+
+  // Get status admin
+  static Future<bool?> getIsAdmin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(isAdminKey);
+  }
+
+  // Clear semua data termasuk admin
+  static Future<void> clearAllAdmin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(loginKey);
+    await prefs.remove(tokenKey);
+    await prefs.remove(userDataKey);
+    await prefs.remove(isAdminKey);
   }
 }

@@ -120,6 +120,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
+              // Di dalam Column, setelah button login warga
+              const SizedBox(height: 15),
+              TextButton(
+                onPressed: () {
+                  context.pushNamed('/admin-login');
+                },
+                child: const Text('Login sebagai Admin RT/RW'),
+              ),
               const SizedBox(height: 15),
               TextButton(
                 onPressed: () {

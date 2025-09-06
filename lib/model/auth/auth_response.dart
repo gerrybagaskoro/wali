@@ -46,6 +46,7 @@ class User {
   dynamic emailVerifiedAt;
   DateTime createdAt;
   DateTime updatedAt;
+  String? role; // TAMBAH FIELD ROLE
 
   User({
     required this.id,
@@ -54,6 +55,7 @@ class User {
     required this.emailVerifiedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.role, // TAMBAH
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -63,6 +65,7 @@ class User {
     emailVerifiedAt: json["email_verified_at"],
     createdAt: DateTime.parse(json["created_at"]),
     updatedAt: DateTime.parse(json["updated_at"]),
+    role: json["role"], // TAMBAH
   );
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +75,7 @@ class User {
     "email_verified_at": emailVerifiedAt,
     "created_at": createdAt.toIso8601String(),
     "updated_at": updatedAt.toIso8601String(),
+    "role": role, // TAMBAH
   };
 }
 
