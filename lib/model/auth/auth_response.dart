@@ -4,6 +4,8 @@
 
 import 'dart:convert';
 
+import 'package:wali_app/preference/shared_preference.dart';
+
 UserAuthResponse userAuthResponseFromJson(String str) =>
     UserAuthResponse.fromJson(json.decode(str));
 
@@ -71,4 +73,32 @@ class User {
     "created_at": createdAt.toIso8601String(),
     "updated_at": updatedAt.toIso8601String(),
   };
+}
+
+// EXTENSIONS - PASTIKAN ADA DI BAWAH
+extension AuthResponseExtensions on UserAuthResponse {
+  Future<void> saveToPreferences() async {
+    await PreferenceHandler.saveToken(data.token);
+    await PreferenceHandler.saveLogin(true);
+    await PreferenceHandler.saveUserData(json.encode(data.user.toJson()));
+  }
+}
+
+extension AuthResponseStaticExtensions on UserAuthResponse {
+  static Future<bool> isLoggedIn() async {
+    final token = await PreferenceHandler.getToken();
+    return token != null;
+  }
+
+  static Future<User?> getSavedUser() async {
+    final userData = await PreferenceHandler.getUserData();
+    if (userData != null) {
+      return User.fromJson(json.decode(userData));
+    }
+    return null;
+  }
+
+  static Future<void> logout() async {
+    await PreferenceHandler.clearAll();
+  }
 }

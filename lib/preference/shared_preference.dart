@@ -5,38 +5,61 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PreferenceHandler {
   static const String loginKey = "login";
   static const String tokenKey = "token";
+  static const String userDataKey = "user_data"; // Key untuk simpan data user
 
-  static void saveLogin() async {
+  // static void saveLogin() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.setBool(loginKey, true);
+  // }
+
+  // Menyimpan status login dengan nilai boolean
+  // Single Responsibility Principle
+  static Future<void> saveLogin(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(loginKey, true);
+    await prefs.setBool(loginKey, isLoggedIn);
   }
 
-  static void saveToken(String token) async {
+  // Simpan token
+  // static void saveToken(String token) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.setString(tokenKey, token);
+  // }
+
+  // Simpan token
+  static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenKey, token);
   }
 
-  static getLogin() async {
-    print(loginKey);
+  // Simpan data user dalam format JSON string
+  static Future<void> saveUserData(String userJson) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.getBool(loginKey);
+    await prefs.setString(userDataKey, userJson);
+  }
+
+  // Get status login - PERBAIKAN: return Future<bool?>
+  static Future<bool?> getLogin() async {
+    final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(loginKey);
   }
 
-  static getToken() async {
-    print(tokenKey);
+  // Get token - PERBAIKAN: return Future<String?>
+  static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.getString(tokenKey);
     return prefs.getString(tokenKey);
   }
 
-  static void removeLogin() async {
+  // Get user data - PERBAIKAN: return Future<String?>
+  static Future<String?> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(loginKey);
+    return prefs.getString(userDataKey);
   }
 
-  static void removeToken() async {
+  // Hapus semua data login
+  static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(loginKey);
     await prefs.remove(tokenKey);
+    await prefs.remove(userDataKey);
   }
 }

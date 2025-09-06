@@ -1,13 +1,15 @@
 class Endpoint {
   static const String appName = 'Wali - Warga Peduli';
-  static const String baseURL = 'http://applaporan.mobileprojp.com/api';
+  static const String baseURL = 'http://applaporan.mobileprojp.com';
+
+  // Auth Endpoints
+  static const String login = '$baseURL/api/login';
+  static const String register = '$baseURL/api/register';
 
   // Report Endpoints
-  static const String login = '$baseURL/login';
-  static const String register = '$baseURL/register';
-  static const String laporan = '$baseURL/laporan';
-  static const String riwayat = '$baseURL/riwayat';
-  static const String statistik = '$baseURL/statistik';
+  static const String laporan = '$baseURL/api/laporan';
+  static const String riwayat = '$baseURL/api/riwayat';
+  static const String statistik = '$baseURL/api/statistik';
 
   // Storage Keys
   static const String tokenKey = 'auth_token';
