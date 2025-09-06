@@ -9,7 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/model/report/report_detail_response.dart';
-import 'package:wali_app/model/report/report_update_response.dart';
+import 'package:wali_app/model/report/report_list_response.dart';
 import 'package:wali_app/preference/shared_preference.dart';
 
 class DetailLaporanScreen extends StatefulWidget {
@@ -51,12 +51,12 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         return;
       }
 
-      final url = Uri.parse('${Endpoint.laporan}/${widget.laporanId}');
-      print('🔍 DEBUG - Loading detail from: $url');
+      print('🔍 Mengambil data dari list laporan...');
 
+      // Ambil semua laporan
       final response = await http
           .get(
-            url,
+            Uri.parse(Endpoint.laporan),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -64,31 +64,43 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('🔍 DEBUG - Detail Status: ${response.statusCode}');
-      print('🔍 DEBUG - Detail Body: ${response.body}');
-
-      // Cek jika response HTML (error)
-      if (response.body.contains('<!DOCTYPE html>')) {
-        throw Exception('Server mengembalikan HTML bukan JSON');
-      }
+      print('🔍 DEBUG - List Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
 
-        if (responseData['data'] != null) {
-          final detailResponse = ReportDetailResponse.fromJson(responseData);
-          setState(() {
-            _laporanDetail = detailResponse.data;
-            _judulController.text = _laporanDetail!.judul;
-            _isiController.text = _laporanDetail!.isi;
-            _lokasiController.text = _laporanDetail!.lokasi ?? '';
-            _isLoading = false;
-          });
-        } else {
-          throw Exception('Data tidak ditemukan dalam response');
-        }
+        // Parse response list
+        final listResponse = ReportListResponse.fromJson(responseData);
+
+        // Cari laporan dengan ID yang sesuai
+        final foundReport = listResponse.data.firstWhere(
+          (report) => report.id == widget.laporanId,
+        );
+
+        // Convert dari model list ke model detail
+        setState(() {
+          _laporanDetail = ReportDetailData(
+            id: foundReport.id,
+            userId: foundReport.userId.toString(),
+            judul: foundReport.judul,
+            isi: foundReport.isi,
+            status: foundReport.status,
+            createdAt: foundReport.createdAt,
+            updatedAt: foundReport.updatedAt.toString(),
+            lokasi: foundReport.lokasi,
+            imageUrl: foundReport.imageUrl,
+          );
+          _judulController.text = foundReport.judul;
+          _isiController.text = foundReport.isi;
+          _lokasiController.text = foundReport.lokasi ?? '';
+          _isLoading = false;
+        });
+
+        print('✅ Detail laporan ditemukan: ${foundReport.judul}');
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        throw Exception(
+          'HTTP ${response.statusCode}: Gagal mengambil list laporan',
+        );
       }
     } catch (e) {
       print('❌ Error loading detail: $e');
@@ -102,12 +114,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
   Future<void> _updateLaporan() async {
     try {
       final token = await PreferenceHandler.getToken();
-      if (token == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Token tidak valid')));
-        return;
-      }
+      if (token == null) return;
 
       final response = await http.put(
         Uri.parse('${Endpoint.laporan}/${widget.laporanId}'),
@@ -122,47 +129,25 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         }),
       );
 
-      print('🔍 DEBUG - Update Response: ${response.statusCode}');
-      print('🔍 DEBUG - Update Body: ${response.body}');
-
-      if (response.body.contains('<!DOCTYPE html>')) {
-        throw Exception('Server mengembalikan error HTML');
-      }
-
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
-        // Method 1: Buat object baru
-        final updatedData = ReportUpdateData.fromJson(responseData['data']);
-
-        setState(() {
-          _laporanDetail = ReportDetailData(
-            id: updatedData.id,
-            userId: updatedData.userId,
-            judul: updatedData.judul,
-            isi: updatedData.isi,
-            status: updatedData.status,
-            createdAt: updatedData.createdAt,
-            updatedAt: updatedData.updatedAt,
-            imagePath: updatedData.imagePath,
-            lokasi: updatedData.lokasi,
-            imageUrl: updatedData.imageUrl,
-            user: _laporanDetail?.user, // Pertahankan data user
-          );
-          _isEditing = false;
-        });
-
+        // Setelah update berhasil, reload data dari list
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Laporan berhasil diperbarui')),
         );
+
+        // Reload data
+        await _loadLaporanDetail();
+        setState(() => _isEditing = false);
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${response.body}')));
       }
     } catch (e) {
-      print('❌ Error updating: $e');
+      print('Error updating: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memperbarui: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -308,7 +293,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                   child: CachedNetworkImage(
                     imageUrl: _laporanDetail!.imageUrl!,
                     width: double.infinity,
-                    height: 200,
+                    height: 320,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       height: 200,
@@ -337,10 +322,10 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 backgroundColor: _getStatusColor(_laporanDetail!.status),
               ),
               const Spacer(),
-              Text(
-                _formatDate(_laporanDetail!.updatedAt),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
+              // Text(
+              //   _formatDate(_laporanDetail!.updatedAt),
+              //   style: const TextStyle(fontSize: 12, color: Colors.grey),
+              // ),
             ],
           ),
 

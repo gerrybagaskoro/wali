@@ -18,17 +18,17 @@ class ReportDetailResponse {
 }
 
 class ReportDetailData {
-  int id;
-  String userId;
-  String judul;
-  String isi;
-  String status;
-  String createdAt;
-  String updatedAt;
-  String? imagePath;
-  String? lokasi;
-  String? imageUrl;
-  ReportUser? user;
+  final int id;
+  final String userId;
+  final String judul;
+  final String isi;
+  final String status;
+  final String createdAt;
+  final String updatedAt;
+  final String? imagePath;
+  final String? lokasi;
+  final String? imageUrl;
+  final ReportUser? user;
 
   ReportDetailData({
     required this.id,

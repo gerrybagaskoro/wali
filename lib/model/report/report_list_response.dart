@@ -30,11 +30,11 @@ class ReportListResponse {
 
 class Datum {
   int id;
-  String userId;
+  String userId; // Pastikan ini String
   String judul;
   String isi;
   String status;
-  final String createdAt;
+  String createdAt; // Pastikan String
   DateTime updatedAt;
   String? imagePath;
   String? lokasi;
