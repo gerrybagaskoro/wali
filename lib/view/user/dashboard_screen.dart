@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,6 +26,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<report_model.Datum> _reports = [];
   bool _isLoading = true;
   bool _showMyReports = true;
+
+  // Variabel untuk pagination
+  int _currentPage = 1;
+  final int _itemsPerPage = 10; // Tampilkan 10 item per halaman
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
+  final ScrollController _scrollController = ScrollController();
 
   final List<Map<String, String>> _carouselItems = [
     {
@@ -52,6 +60,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadUserData();
     _loadReports();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      _loadMoreReports();
+    }
+  }
+
+  Future<void> _loadMoreReports() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() => _isLoadingMore = true);
+    _currentPage++;
+
+    await _loadReports();
   }
 
   Future<void> _loadUserData() async {
@@ -63,13 +94,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _loadReports() async {
+  // Future<void> _loadReports() async {
+  //   try {
+  //     final token = await PreferenceHandler.getToken();
+  //     if (token == null) return;
+
+  //     final response = await http.get(
+  //       Uri.parse(Endpoint.laporan),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       final reportResponse = report_model.ReportListResponse.fromJson(
+  //         json.decode(response.body),
+  //       );
+  //       if (mounted) {
+  //         setState(() => _reports = reportResponse.data);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('Error loading reports: $e');
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() => _isLoading = false);
+  //     }
+  //   }
+  // }
+
+  // UBAH METHOD _loadReports MENJADI:
+  Future<void> _loadReports({bool isRefresh = false}) async {
+    if (isRefresh) {
+      _currentPage = 1;
+      _hasMoreData = true;
+    }
+
     try {
       final token = await PreferenceHandler.getToken();
       if (token == null) return;
 
+      // TAMBAH PARAMETER PAGINATION DI URL
       final response = await http.get(
-        Uri.parse(Endpoint.laporan),
+        Uri.parse(
+          '${Endpoint.laporan}?page=$_currentPage&per_page=$_itemsPerPage',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -80,15 +150,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final reportResponse = report_model.ReportListResponse.fromJson(
           json.decode(response.body),
         );
+
         if (mounted) {
-          setState(() => _reports = reportResponse.data);
+          setState(() {
+            if (isRefresh) {
+              _reports = reportResponse.data;
+            } else {
+              _reports.addAll(reportResponse.data);
+            }
+
+            // CEK APAKAH MASIH ADA DATA LAGI
+            _hasMoreData = reportResponse.data.length == _itemsPerPage;
+            _isLoading = false;
+            _isLoadingMore = false;
+          });
         }
       }
     } catch (e) {
       print('Error loading reports: $e');
-    } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
       }
     }
   }
@@ -150,11 +234,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+
+      // body: Padding(
+      //   padding: const EdgeInsets.all(6.0),
+      //   child: RefreshIndicator(
+      //     onRefresh: _loadReports,
+      //     child: SingleChildScrollView(
+      //       child: Column(
+      //         children: [
+      //           _buildHeaderSection(),
+      //           const SizedBox(height: 16),
+      //           _buildCarouselSection(),
+      //           const SizedBox(height: 20),
+      //           _buildSwitchMenuSection(),
+      //           const SizedBox(height: 16),
+      //           _buildReportsSection(),
+      //         ],
+      //       ),
+      //     ),
+      //   ),
+      // ),
+
+      // UBAH BAGIAN BODY MENJADI:
       body: Padding(
         padding: const EdgeInsets.all(6.0),
         child: RefreshIndicator(
-          onRefresh: _loadReports,
+          onRefresh: () async {
+            await _loadReports(isRefresh: true); // TAMBAH PARAMETER isRefresh
+          },
           child: SingleChildScrollView(
+            controller: _scrollController, // TAMBAH CONTROLLER
             child: Column(
               children: [
                 _buildHeaderSection(),
@@ -163,12 +272,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 20),
                 _buildSwitchMenuSection(),
                 const SizedBox(height: 16),
-                _buildReportsSection(),
+                _buildReportsSection(), // INI SUDAH PAKAI LISTVIEW.BUILDER
               ],
             ),
           ),
         ),
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.push<bool>(
@@ -324,7 +434,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildReportsSection() {
-    if (_isLoading) {
+    if (_isLoading && _reports.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(child: CircularProgressIndicator()),
@@ -349,11 +459,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    return Column(
-      children: _filteredReports.map((report) {
-        return _buildReportCard(report);
-      }).toList(),
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: _filteredReports.length + (_hasMoreData ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= _filteredReports.length) {
+          return _buildLoadingIndicator();
+        }
+
+        return _buildReportCard(_filteredReports[index]);
+      },
     );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return _isLoadingMore
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        : Container();
   }
 
   Widget _buildReportCard(report_model.Datum report) {
@@ -449,36 +575,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 8),
 
             // GAMBAR
+            // if (report.imageUrl != null) ...[
+            //   ClipRRect(
+            //     borderRadius: BorderRadius.circular(8),
+            //     child: Image.network(
+            //       report.imageUrl!,
+            //       height: 320,
+            //       width: double.infinity,
+            //       fit: BoxFit.cover,
+            //       loadingBuilder: (context, child, loadingProgress) {
+            //         if (loadingProgress == null) return child;
+            //         return Container(
+            //           height: 200,
+            //           color: Colors.grey.shade200,
+            //           child: Center(
+            //             child: CircularProgressIndicator(
+            //               value: loadingProgress.expectedTotalBytes != null
+            //                   ? loadingProgress.cumulativeBytesLoaded /
+            //                         loadingProgress.expectedTotalBytes!
+            //                   : null,
+            //             ),
+            //           ),
+            //         );
+            //       },
+            //       errorBuilder: (context, error, stackTrace) {
+            //         return Container(
+            //           height: 200,
+            //           color: Colors.grey.shade200,
+            //           child: const Icon(Icons.error, color: Colors.grey),
+            //         );
+            //       },
+            //     ),
+            //   ),
+            //   const SizedBox(height: 8),
+            // ],
+            // DI _buildReportCard, UBAH BAGIAN GAMBAR:
             if (report.imageUrl != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  report.imageUrl!,
-                  height: 320,
+                child: CachedNetworkImage(
+                  // GUNAKAN CachedNetworkImage
+                  imageUrl: report.imageUrl!,
+                  height: 360,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 200,
-                      color: Colors.grey.shade200,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 200,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.error, color: Colors.grey),
-                    );
-                  },
+                  placeholder: (context, url) => Container(
+                    height: 360,
+                    color: Colors.grey.shade200,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 360,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.error, color: Colors.grey),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
