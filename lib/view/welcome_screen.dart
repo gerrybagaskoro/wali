@@ -1,5 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:wali_app/extension/navigation.dart';
+import 'package:wali_app/preference/shared_preference.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -31,6 +34,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     },
   ];
 
+  Future<void> _markOnboardingAsShown() async {
+    await PreferenceHandler.saveOnboardingShown(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,7 +64,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const SizedBox(height: 20),
                 _currentPage == _onboardingData.length - 1
                     ? ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          // Simpan status bahwa onboarding sudah ditampilkan
+                          await _markOnboardingAsShown();
                           context.pushReplacementNamed('/login');
                         },
                         style: ElevatedButton.styleFrom(
@@ -72,7 +81,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     : Row(
                         children: [
                           TextButton(
-                            onPressed: () {
+                            onPressed: () async {
+                              // Simpan status bahwa onboarding sudah ditampilkan
+                              await _markOnboardingAsShown();
                               context.pushReplacementNamed('/login');
                             },
                             child: const Text('Lewati'),
