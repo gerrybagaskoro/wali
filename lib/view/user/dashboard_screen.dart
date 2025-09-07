@@ -24,17 +24,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  auth_model.User? _currentUser;
-  List<report_model.Datum> _reports = [];
-  bool _isLoading = true;
-  bool _showMyReports = true;
-
-  // Variabel untuk pagination
-  int _currentPage = 1;
-  final int _itemsPerPage = 10; // Tampilkan 10 item per halaman
-  bool _isLoadingMore = false;
-  bool _hasMoreData = true;
   final ScrollController _scrollController = ScrollController();
+  final int _itemsPerPage = 10;
+
+  Future<Map<String, dynamic>>? _dashboardFuture;
+  auth_model.User? _currentUser;
+  bool _showMyReports = true;
 
   final List<Map<String, String>> _carouselItems = [
     {
@@ -61,9 +56,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null);
-    _loadUserData();
-    _loadReports();
     _scrollController.addListener(_onScroll);
+    _loadDashboardData();
   }
 
   @override
@@ -79,70 +73,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _loadMoreReports() async {
-    if (_isLoadingMore || !_hasMoreData) return;
-
-    setState(() => _isLoadingMore = true);
-    _currentPage++;
-
-    await _loadReports();
+  void _loadDashboardData() {
+    setState(() {
+      _dashboardFuture = _fetchDashboardData();
+    });
   }
 
-  Future<void> _loadUserData() async {
-    final userData = await PreferenceHandler.getUserData();
-    if (userData != null && mounted) {
-      setState(() {
-        _currentUser = auth_model.User.fromJson(json.decode(userData));
-      });
-    }
-  }
-
-  // Future<void> _loadReports() async {
-  //   try {
-  //     final token = await PreferenceHandler.getToken();
-  //     if (token == null) return;
-
-  //     final response = await http.get(
-  //       Uri.parse(Endpoint.laporan),
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': 'Bearer $token',
-  //       },
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       final reportResponse = report_model.ReportListResponse.fromJson(
-  //         json.decode(response.body),
-  //       );
-  //       if (mounted) {
-  //         setState(() => _reports = reportResponse.data);
-  //       }
-  //     }
-  //   } catch (e) {
-  //     print('Error loading reports: $e');
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() => _isLoading = false);
-  //     }
-  //   }
-  // }
-
-  // UBAH METHOD _loadReports MENJADI:
-  Future<void> _loadReports({bool isRefresh = false}) async {
-    if (isRefresh) {
-      _currentPage = 1;
-      _hasMoreData = true;
-    }
-
+  Future<Map<String, dynamic>> _fetchDashboardData() async {
     try {
       final token = await PreferenceHandler.getToken();
-      if (token == null) return;
+      if (token == null) throw Exception('Token tidak valid');
 
-      // TAMBAH PARAMETER PAGINATION DI URL
+      // ✅ PERBAIKAN: Load data secara terpisah untuk avoid type issues
+      final userData = await _loadUserData();
+      final reportsData = await _loadReports(token, page: 1);
+
+      return {
+        'user': userData,
+        'reports': reportsData?['reports'] ?? <report_model.Datum>[],
+        'hasMore': reportsData?['hasMore'] ?? false,
+        'currentPage': 1,
+      };
+    } catch (e) {
+      throw Exception('Gagal memuat dashboard: $e');
+    }
+  }
+
+  Future<auth_model.User?> _loadUserData() async {
+    try {
+      final userData = await PreferenceHandler.getUserData();
+      if (userData != null) {
+        _currentUser = auth_model.User.fromJson(json.decode(userData));
+        return _currentUser;
+      }
+      return null;
+    } catch (e) {
+      print('Error loading user data: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _loadReports(
+    String token, {
+    int page = 1,
+  }) async {
+    try {
       final response = await http.get(
-        Uri.parse(
-          '${Endpoint.laporan}?page=$_currentPage&per_page=$_itemsPerPage',
-        ),
+        Uri.parse('${Endpoint.laporan}?page=$page&per_page=$_itemsPerPage'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -154,66 +131,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
           json.decode(response.body),
         );
 
-        if (mounted) {
-          setState(() {
-            if (isRefresh) {
-              _reports = reportResponse.data;
-            } else {
-              _reports.addAll(reportResponse.data);
-            }
-
-            // CEK APAKAH MASIH ADA DATA LAGI
-            _hasMoreData = reportResponse.data.length == _itemsPerPage;
-            _isLoading = false;
-            _isLoadingMore = false;
-          });
-        }
+        return {
+          'reports': reportResponse.data,
+          'hasMore': reportResponse.data.length == _itemsPerPage,
+        };
+      } else {
+        throw Exception('HTTP ${response.statusCode}: Gagal memuat laporan');
       }
     } catch (e) {
       print('Error loading reports: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
+      return null;
     }
   }
 
-  Future<void> _showLogoutDialog() async {
-    final result = await showDialog<bool>(
+  Future<void> _loadMoreReports() async {
+    try {
+      final currentData = await _dashboardFuture;
+      if (currentData == null) return;
+
+      final token = await PreferenceHandler.getToken();
+      if (token == null) return;
+
+      final nextPage = (currentData['currentPage'] as int) + 1;
+      final newReportsData = await _loadReports(token, page: nextPage);
+
+      if (newReportsData == null) return;
+
+      final currentReports =
+          currentData['reports'] as List<report_model.Datum>? ?? [];
+      final newReports =
+          newReportsData['reports'] as List<report_model.Datum>? ?? [];
+
+      setState(() {
+        _dashboardFuture = Future.value({
+          'user': currentData['user'],
+          'reports': [...currentReports, ...newReports],
+          'hasMore': newReportsData['hasMore'] ?? false,
+          'currentPage': nextPage,
+        });
+      });
+    } catch (e) {
+      print('Error loading more reports: $e');
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    _loadDashboardData();
+  }
+
+  Future<void> _showLogoutConfirmation() async {
+    final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Keluar'),
-          content: const Text('Apakah Anda yakin ingin keluar akun?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Keluar', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
 
-    if (result == true && mounted) {
+    if (shouldLogout == true && mounted) {
       await PreferenceHandler.clearAll();
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
-  List<report_model.Datum> get _filteredReports {
+  List<report_model.Datum> _getFilteredReports(
+    List<report_model.Datum> reports,
+  ) {
     if (_showMyReports) {
-      return _reports
+      return reports
           .where((report) => report.user.id == _currentUser?.id)
           .toList();
     } else {
-      return _reports
+      return reports
           .where((report) => report.user.id != _currentUser?.id)
           .toList();
     }
@@ -225,63 +224,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Wali - Warga Peduli'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadReports),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboardData,
+            tooltip: 'Refresh',
+          ),
           IconButton(
             icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+            tooltip: 'Profil',
           ),
         ],
       ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _dashboardFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      // body: Padding(
-      //   padding: const EdgeInsets.all(6.0),
-      //   child: RefreshIndicator(
-      //     onRefresh: _loadReports,
-      //     child: SingleChildScrollView(
-      //       child: Column(
-      //         children: [
-      //           _buildHeaderSection(),
-      //           const SizedBox(height: 16),
-      //           _buildCarouselSection(),
-      //           const SizedBox(height: 20),
-      //           _buildSwitchMenuSection(),
-      //           const SizedBox(height: 16),
-      //           _buildReportsSection(),
-      //         ],
-      //       ),
-      //     ),
-      //   ),
-      // ),
+          if (snapshot.hasError) {
+            return _buildErrorState(snapshot.error!);
+          }
 
-      // UBAH BAGIAN BODY MENJADI:
-      body: Padding(
-        padding: const EdgeInsets.all(6.0),
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await _loadReports(isRefresh: true); // TAMBAH PARAMETER isRefresh
-          },
-          child: SingleChildScrollView(
-            controller: _scrollController, // TAMBAH CONTROLLER
-            child: Column(
-              children: [
-                _buildHeaderSection(),
-                const SizedBox(height: 16),
-                _buildCarouselSection(),
-                const SizedBox(height: 20),
-                _buildSwitchMenuSection(),
-                const SizedBox(height: 16),
-                _buildReportsSection(), // INI SUDAH PAKAI LISTVIEW.BUILDER
-              ],
-            ),
-          ),
-        ),
+          if (snapshot.hasData) {
+            final data = snapshot.data!;
+            final reports = data['reports'] as List<report_model.Datum>? ?? [];
+            final hasMore = data['hasMore'] as bool? ?? false;
+            final filteredReports = _getFilteredReports(reports);
+
+            return _buildSuccessState(filteredReports, hasMore);
+          }
+
+          return const Center(child: Text('Tidak ada data'));
+        },
       ),
-
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.push<bool>(
@@ -289,14 +269,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             MaterialPageRoute(builder: (_) => const UserAddReport()),
           );
           if (result == true && mounted) {
-            _loadReports();
+            _loadDashboardData();
           }
         },
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Buat Laporan Baru',
-          style: TextStyle(color: Colors.white),
-        ),
+        label: const Text('Buat Laporan Baru'),
         backgroundColor: Colors.green,
         elevation: 4,
       ),
@@ -304,9 +281,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildErrorState(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text(
+              'Terjadi Kesalahan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _loadDashboardData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessState(List<report_model.Datum> reports, bool hasMore) {
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeaderSection()),
+            SliverToBoxAdapter(child: _buildCarouselSection()),
+            SliverToBoxAdapter(child: _buildSwitchMenuSection()),
+            SliverToBoxAdapter(child: const SizedBox(height: 16)),
+            _buildReportsSection(reports, hasMore),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderSection() {
     return Card(
       elevation: 2,
+      margin: const EdgeInsets.all(8),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -335,7 +363,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.red),
-              onPressed: _showLogoutDialog,
+              onPressed: _showLogoutConfirmation,
               tooltip: 'Keluar',
             ),
           ],
@@ -346,26 +374,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildCarouselSection() {
     return SizedBox(
-      height: 180, // Beri extra space untuk animasi
+      height: 180,
       child: CarouselSlider(
         options: CarouselOptions(
-          height: 160, // Tinggi konten
-
+          height: 160,
           autoPlay: true,
           enlargeCenterPage: true,
-          enlargeFactor: 0.25, // Kurangi pembesaran
-          viewportFraction: 0.75, // Kurangi lebar viewport
+          enlargeFactor: 0.25,
+          viewportFraction: 0.75,
           autoPlayInterval: const Duration(seconds: 5),
           autoPlayCurve: Curves.fastOutSlowIn,
         ),
         items: _carouselItems.map((item) {
           return Container(
-            // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.green.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.green.shade200, width: 1),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 4,
@@ -377,7 +403,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(item['icon']!, style: const TextStyle(fontSize: 32)),
                   const SizedBox(height: 8),
@@ -394,7 +419,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 6),
                   Flexible(
-                    // Gunakan Flexible untuk text yang panjang
                     child: Text(
                       item['description']!,
                       style: const TextStyle(fontSize: 11, height: 1.3),
@@ -413,84 +437,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSwitchMenuSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('Laporan:'),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('Laporan Saya'),
-          selected: _showMyReports,
-          onSelected: (selected) {
-            setState(() => _showMyReports = selected);
-          },
-        ),
-        const SizedBox(width: 8),
-        ChoiceChip(
-          label: const Text('Laporan Warga'),
-          selected: !_showMyReports,
-          onSelected: (selected) {
-            setState(() => _showMyReports = !selected);
-          },
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Laporan:'),
+          const SizedBox(width: 12),
+          ChoiceChip(
+            label: const Text('Laporan Saya'),
+            selected: _showMyReports,
+            onSelected: (selected) {
+              setState(() => _showMyReports = selected);
+            },
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('Laporan Warga'),
+            selected: !_showMyReports,
+            onSelected: (selected) {
+              setState(() => _showMyReports = !selected);
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildReportsSection() {
-    if (_isLoading && _reports.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: CircularProgressIndicator()),
-      );
+  Widget _buildReportsSection(List<report_model.Datum> reports, bool hasMore) {
+    if (reports.isEmpty) {
+      return SliverFillRemaining(child: _buildEmptyState());
     }
 
-    if (_filteredReports.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Column(
-          children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(
-              _showMyReports
-                  ? 'Belum ada laporan dari Anda'
-                  : 'Belum ada laporan dari warga',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: _filteredReports.length + (_hasMoreData ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index >= _filteredReports.length) {
-          return _buildLoadingIndicator();
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        if (index >= reports.length) {
+          return hasMore ? _buildLoadingIndicator() : const SizedBox();
         }
+        return _buildReportCard(reports[index]);
+      }, childCount: reports.length + (hasMore ? 1 : 0)),
+    );
+  }
 
-        return _buildReportCard(_filteredReports[index]);
-      },
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            _showMyReports
+                ? 'Belum ada laporan dari Anda'
+                : 'Belum ada laporan dari warga',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildLoadingIndicator() {
-    return _isLoadingMore
-        ? const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        : Container();
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(child: CircularProgressIndicator()),
+    );
   }
 
   Widget _buildReportCard(report_model.Datum report) {
-    Color statusColor = Colors.grey;
-    if (report.status == 'proses') statusColor = Colors.orange;
-    if (report.status == 'selesai') statusColor = Colors.green;
-
+    final statusColor = _getStatusColor(report.status);
     final isMyReport = report.user.id == _currentUser?.id;
 
     return InkWell(
@@ -506,8 +522,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       },
       borderRadius: BorderRadius.circular(12),
-      splashColor: Colors.green.withOpacity(0.2), // ✅ SPLASH COLOR
-      highlightColor: Colors.green.withOpacity(0.1), // ✅ HIGHLIGHT COLOR
+      splashColor: Colors.green.withOpacity(0.2),
+      highlightColor: Colors.green.withOpacity(0.1),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Card(
@@ -521,111 +537,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: isMyReport
-                          ? Colors.green.shade100
-                          : Colors.blue.shade100,
-                      child: Text(
-                        report.user.name[0].toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isMyReport ? Colors.green : Colors.blue,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        report.user.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Chip(
-                      label: Text(
-                        report.status.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                        ),
-                      ),
-                      backgroundColor: statusColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildReportHeader(report, statusColor, isMyReport),
                 const SizedBox(height: 8),
-                Text(
-                  report.judul,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (report.lokasi != null) ...[
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          report.lokasi!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                Text(report.isi, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-
-                // ✅ TAMPILKAN GAMBAR UNTUK SEMUA LAPORAN
-                if (report.imageUrl != null) ...[
-                  Container(
-                    height: 320,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: NetworkImage(report.imageUrl!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-
-                Text(
-                  'Dilaporkan: ${_formatDate(report.createdAt)}',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
+                _buildReportContent(report),
+                if (report.imageUrl != null) _buildReportImage(report),
+                _buildReportFooter(report),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildReportHeader(
+    report_model.Datum report,
+    Color statusColor,
+    bool isMyReport,
+  ) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: isMyReport
+              ? Colors.green.shade100
+              : Colors.blue.shade100,
+          child: Text(
+            report.user.name[0].toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isMyReport ? Colors.green : Colors.blue,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            report.user.name,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Chip(
+          label: Text(
+            report.status.toUpperCase(),
+            style: const TextStyle(fontSize: 10, color: Colors.white),
+          ),
+          backgroundColor: statusColor,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReportContent(report_model.Datum report) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          report.judul,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        if (report.lokasi != null) ...[
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  report.lokasi!,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        Text(report.isi, maxLines: 2, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildReportImage(report_model.Datum report) {
+    return Column(
+      children: [
+        Container(
+          height: 320,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            image: DecorationImage(
+              image: NetworkImage(report.imageUrl!),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildReportFooter(report_model.Datum report) {
+    return Text(
+      'Dilaporkan: ${_formatDate(report.createdAt)}',
+      style: const TextStyle(fontSize: 10, color: Colors.grey),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'proses':
+        return Colors.orange;
+      case 'selesai':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 
   String _formatDate(String dateString) {
