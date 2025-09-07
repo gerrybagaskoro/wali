@@ -72,31 +72,52 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         // Parse response list
         final listResponse = ReportListResponse.fromJson(responseData);
 
-        // Cari laporan dengan ID yang sesuai
-        final foundReport = listResponse.data.firstWhere(
-          (report) => report.id == widget.laporanId,
-        );
-
-        // Convert dari model list ke model detail
-        setState(() {
-          _laporanDetail = ReportDetailData(
-            id: foundReport.id,
-            userId: foundReport.userId.toString(),
-            judul: foundReport.judul,
-            isi: foundReport.isi,
-            status: foundReport.status,
-            createdAt: foundReport.createdAt,
-            updatedAt: foundReport.updatedAt.toString(),
-            lokasi: foundReport.lokasi,
-            imageUrl: foundReport.imageUrl,
+        try {
+          // Cari laporan dengan ID yang sesuai
+          final foundReport = listResponse.data.firstWhere(
+            (report) => report.id == widget.laporanId,
           );
-          _judulController.text = foundReport.judul;
-          _isiController.text = foundReport.isi;
-          _lokasiController.text = foundReport.lokasi ?? '';
-          _isLoading = false;
-        });
 
-        print('✅ Detail laporan ditemukan: ${foundReport.judul}');
+          // ✅ PERBAIKAN: Ambil data user dari report
+          final userName = foundReport.user.name;
+          final userInitial = userName.isNotEmpty
+              ? userName[0].toUpperCase()
+              : 'U';
+
+          // Convert dari model list ke model detail
+          setState(() {
+            _laporanDetail = ReportDetailData(
+              id: foundReport.id,
+              userId: foundReport.userId.toString(),
+              judul: foundReport.judul,
+              isi: foundReport.isi,
+              status: foundReport.status,
+              createdAt: foundReport.createdAt,
+              updatedAt: foundReport.updatedAt.toString(),
+              lokasi: foundReport.lokasi,
+              imageUrl: foundReport.imageUrl,
+              // ✅ TAMBAHKAN DATA USER
+              user: ReportUser(
+                id: foundReport.user.id,
+                name: userName,
+                email: foundReport.user.email,
+                emailVerifiedAt: foundReport.user.emailVerifiedAt,
+                createdAt: foundReport.user.createdAt.toString(),
+                updatedAt: foundReport.user.updatedAt.toString(),
+              ),
+            );
+            _judulController.text = foundReport.judul;
+            _isiController.text = foundReport.isi;
+            _lokasiController.text = foundReport.lokasi ?? '';
+            _isLoading = false;
+          });
+
+          print('✅ Detail laporan ditemukan: ${foundReport.judul}');
+        } catch (e) {
+          throw Exception(
+            'Laporan dengan ID ${widget.laporanId} tidak ditemukan',
+          );
+        }
       } else {
         throw Exception(
           'HTTP ${response.statusCode}: Gagal mengambil list laporan',
@@ -190,14 +211,17 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header dengan avatar dan nama
+          // ✅ PERBAIKAN: Header dengan avatar dan nama pengguna yang benar
           Row(
             children: [
               CircleAvatar(
                 radius: 20,
                 backgroundColor: Colors.green.shade100,
                 child: Text(
-                  'W',
+                  _laporanDetail!.user != null &&
+                          _laporanDetail!.user!.name.isNotEmpty
+                      ? _laporanDetail!.user!.name[0].toUpperCase()
+                      : 'U',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -207,17 +231,35 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'User ID: ${_laporanDetail!.userId}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _laporanDetail!.user != null
+                          ? _laporanDetail!.user!.name
+                          : 'User ID: ${_laporanDetail!.userId}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (_laporanDetail!.user != null &&
+                        _laporanDetail!.user!.email.isNotEmpty)
+                      Text(
+                        _laporanDetail!.user!.email,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
+
+          // ... (widget lainnya tetap sama)
 
           // Judul (editable jika laporan saya)
           _isEditing

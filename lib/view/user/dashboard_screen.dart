@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 
+import 'package:animate_do/animate_do.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -315,58 +316,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSuccessState(List<report_model.Datum> reports, bool hasMore) {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
-      child: Padding(
-        padding: const EdgeInsets.all(6.0),
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeaderSection()),
-            SliverToBoxAdapter(child: _buildCarouselSection()),
-            SliverToBoxAdapter(child: _buildSwitchMenuSection()),
-            SliverToBoxAdapter(child: const SizedBox(height: 16)),
-            _buildReportsSection(reports, hasMore),
-          ],
-        ),
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeaderSection()),
+          SliverToBoxAdapter(child: _buildCarouselSection()),
+          SliverToBoxAdapter(child: _buildSwitchMenuSection()),
+          SliverToBoxAdapter(child: const SizedBox(height: 16)),
+          _buildReportsSection(reports, hasMore),
+        ],
       ),
     );
   }
 
   Widget _buildHeaderSection() {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            const Icon(Icons.eco, size: 40, color: Colors.green),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentUser != null
-                        ? 'Halo, ${_currentUser!.name}!'
-                        : 'Halo, Warga!',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Text(
-                    'Mari jaga lingkungan kita bersama',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
+    return FadeInDown(
+      duration: const Duration(milliseconds: 500),
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.all(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Bounce(
+                infinite: false,
+                child: const Icon(Icons.eco, size: 40, color: Colors.green),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.red),
-              onPressed: _showLogoutConfirmation,
-              tooltip: 'Keluar',
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FadeInDown(
+                      child: Text(
+                        _currentUser != null
+                            ? 'Halo, ${_currentUser!.name}!'
+                            : 'Halo, Warga!',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 100),
+                      child: const Text(
+                        'Mari jaga lingkungan kita bersama',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FadeInDown(
+                child: IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  onPressed: _showLogoutConfirmation,
+                  tooltip: 'Keluar',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -474,34 +485,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (index >= reports.length) {
           return hasMore ? _buildLoadingIndicator() : const SizedBox();
         }
-        return _buildReportCard(reports[index]);
+
+        // ✅ ANIMASI UNTUK SETIAP LAPORAN
+        return FadeInDown(
+          duration: Duration(
+            milliseconds: 300 + (index * 100),
+          ), // Staggered animation
+          child: _buildReportCard(reports[index]),
+        );
       }, childCount: reports.length + (hasMore ? 1 : 0)),
     );
   }
 
   Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inbox, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            _showMyReports
-                ? 'Belum ada laporan dari Anda'
-                : 'Belum ada laporan dari warga',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ],
+    return BounceInDown(
+      duration: const Duration(milliseconds: 800),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Pulse(
+              infinite: true,
+              child: Icon(Icons.inbox, size: 64, color: Colors.grey.shade300),
+            ),
+            const SizedBox(height: 16),
+            FadeInUp(
+              child: Text(
+                _showMyReports
+                    ? 'Belum ada laporan dari Anda'
+                    : 'Belum ada laporan dari warga',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLoadingIndicator() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Center(child: CircularProgressIndicator()),
+    return SpinPerfect(
+      infinite: true,
+      duration: const Duration(seconds: 1),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 
@@ -509,40 +539,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final statusColor = _getStatusColor(report.status);
     final isMyReport = report.user.id == _currentUser?.id;
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetailLaporanScreen(
-              laporanId: report.id,
-              isMyReport: isMyReport,
+    return ElasticIn(
+      duration: const Duration(milliseconds: 600),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  DetailLaporanScreen(
+                    laporanId: report.id,
+                    isMyReport: isMyReport,
+                  ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
             ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      splashColor: Colors.green.withOpacity(0.2),
-      highlightColor: Colors.green.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildReportHeader(report, statusColor, isMyReport),
-                const SizedBox(height: 8),
-                _buildReportContent(report),
-                if (report.imageUrl != null) _buildReportImage(report),
-                _buildReportFooter(report),
-              ],
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.green.withOpacity(0.2),
+        highlightColor: Colors.green.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildReportHeader(report, statusColor, isMyReport),
+                  const SizedBox(height: 8),
+                  _buildReportContent(report),
+                  if (report.imageUrl != null) _buildReportImage(report),
+                  _buildReportFooter(report),
+                ],
+              ),
             ),
           ),
         ),
