@@ -137,7 +137,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'hasMore': reportResponse.data.length == _itemsPerPage,
         };
       } else {
-        throw Exception('HTTP ${response.statusCode}: Gagal memuat laporan');
+        print('HTTP ${response.statusCode}: ${response.body}');
+        return null;
       }
     } catch (e) {
       print('Error loading reports: $e');
@@ -148,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadMoreReports() async {
     try {
       final currentData = await _dashboardFuture;
-      if (currentData == null) return;
+      if (currentData == null || !(currentData['hasMore'] as bool)) return;
 
       final token = await PreferenceHandler.getToken();
       if (token == null) return;
@@ -156,12 +157,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final nextPage = (currentData['currentPage'] as int) + 1;
       final newReportsData = await _loadReports(token, page: nextPage);
 
-      if (newReportsData == null) return;
+      if (newReportsData == null || newReportsData['reports'].isEmpty) return;
 
-      final currentReports =
-          currentData['reports'] as List<report_model.Datum>? ?? [];
-      final newReports =
-          newReportsData['reports'] as List<report_model.Datum>? ?? [];
+      final currentReports = currentData['reports'] as List<report_model.Datum>;
+      final newReports = newReportsData['reports'] as List<report_model.Datum>;
 
       setState(() {
         _dashboardFuture = Future.value({
@@ -274,7 +273,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         },
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Buat Laporan Baru'),
+        label: const Text(
+          'Buat Laporan Baru',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.green,
         elevation: 4,
       ),
@@ -482,15 +484,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        if (index >= reports.length) {
+        if (index == reports.length) {
           return hasMore ? _buildLoadingIndicator() : const SizedBox();
         }
 
-        // ✅ ANIMASI UNTUK SETIAP LAPORAN
         return FadeInDown(
-          duration: Duration(
-            milliseconds: 300 + (index * 100),
-          ), // Staggered animation
+          duration: Duration(milliseconds: 300 + (index * 100)),
           child: _buildReportCard(reports[index]),
         );
       }, childCount: reports.length + (hasMore ? 1 : 0)),
@@ -703,8 +702,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatDate(String dateString) {
     try {
-      final date = DateTime.parse(dateString);
-      return IndonesianDateUtils.formatDateTime(date);
+      final utcDate = DateTime.parse(dateString).toUtc(); // pastikan UTC
+      final localDate = utcDate.toLocal(); // convert ke lokal device
+      return IndonesianDateUtils.formatDateTime(localDate);
     } catch (e) {
       return dateString;
     }

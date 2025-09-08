@@ -19,44 +19,73 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  // State variables
   Future<Map<String, dynamic>>? _dataFuture;
+  final int _itemsPerPage = 10;
+  int _currentPage = 1;
+  bool _hasMore = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _initializeApp();
+    _scrollController.addListener(_onScroll);
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Scroll listener for pagination
+  void _onScroll() {
+    if (_scrollController.position.pixels ==
+            _scrollController.position.maxScrollExtent &&
+        _hasMore) {
+      _loadMoreData();
+    }
+  }
+
+  // Initialize app
   void _initializeApp() {
     initializeDateFormatting('id_ID', null);
     _loadData();
   }
 
+  // Load data
   void _loadData() {
     setState(() {
       _dataFuture = _fetchDashboardData();
     });
   }
 
+  // Fetch dashboard data
   Future<Map<String, dynamic>> _fetchDashboardData() async {
     try {
       final token = await PreferenceHandler.getToken();
       if (token == null) throw Exception('Token tidak valid');
 
       final results = await Future.wait([
-        _fetchReports(token),
+        _fetchReports(token, page: 1),
         _fetchStatistics(token),
       ]);
 
-      return {'reports': results[0], 'statistics': results[1]};
+      final reports = results[0] as List<Datum>;
+      _hasMore = reports.length == _itemsPerPage;
+      _currentPage = 1;
+
+      return {'reports': reports, 'statistics': results[1]};
     } catch (e) {
       throw Exception('Gagal memuat data dashboard: $e');
     }
   }
 
-  Future<List<Datum>> _fetchReports(String token) async {
+  // Fetch reports with pagination
+  Future<List<Datum>> _fetchReports(String token, {int page = 1}) async {
     final response = await http.get(
-      Uri.parse(Endpoint.laporan),
+      Uri.parse('${Endpoint.laporan}?page=$page&per_page=$_itemsPerPage'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -73,6 +102,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Fetch statistics
   Future<Map<String, int>> _fetchStatistics(String token) async {
     final response = await http.get(
       Uri.parse(Endpoint.statistik),
@@ -94,6 +124,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Load more data for pagination
+  Future<void> _loadMoreData() async {
+    if (!_hasMore) return;
+
+    try {
+      final token = await PreferenceHandler.getToken();
+      if (token == null) return;
+
+      final nextPage = _currentPage + 1;
+      final newReports = await _fetchReports(token, page: nextPage);
+
+      if (newReports.isEmpty) {
+        setState(() => _hasMore = false);
+        return;
+      }
+
+      final currentData = await _dataFuture;
+      if (currentData == null) return;
+
+      final currentReports = currentData['reports'] as List<Datum>;
+      final updatedReports = [...currentReports, ...newReports];
+
+      setState(() {
+        _dataFuture = Future.value({
+          'reports': updatedReports,
+          'statistics': currentData['statistics'],
+        });
+        _currentPage = nextPage;
+        _hasMore = newReports.length == _itemsPerPage;
+      });
+    } catch (e) {
+      print('Error loading more data: $e');
+    }
+  }
+
+  // Handle status update
   Future<void> _handleStatusUpdate(int reportId, String newStatus) async {
     try {
       final token = await PreferenceHandler.getToken();
@@ -110,6 +176,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       if (response.statusCode == 200) {
         _showSuccessMessage('Status diperbarui ke $newStatus');
+        _currentPage = 1;
+        _hasMore = true;
         _loadData();
       } else {
         _showErrorMessage('Gagal memperbarui status');
@@ -119,6 +187,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Handle delete report
   Future<void> _handleDeleteReport(int reportId) async {
     try {
       final token = await PreferenceHandler.getToken();
@@ -134,6 +203,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       if (response.statusCode == 200) {
         _showSuccessMessage('Laporan berhasil dihapus');
+        _currentPage = 1;
+        _hasMore = true;
         _loadData();
       } else {
         _showErrorMessage('Gagal menghapus laporan');
@@ -143,18 +214,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Show success message
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
+  // Show error message
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
+  // Show logout confirmation
   Future<void> _showLogoutConfirmation() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -180,11 +254,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Get status color
+  Color _getStatusColor(String status) {
+    final statusColors = {
+      'masuk': Colors.orange,
+      'proses': Colors.blue,
+      'selesai': Colors.green,
+    };
+    return statusColors[status] ?? Colors.grey;
+  }
+
+  // Format date to Indonesian
+  String _formatDateIndonesian(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final format = DateFormat('EEEE, dd MMMM yyyy HH:mm', 'id_ID');
+      return format.format(date);
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  // Show delete confirmation dialog
+  void _showDeleteConfirmation(int reportId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Laporan'),
+        content: const Text('Apakah Anda yakin ingin menghapus laporan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleDeleteReport(reportId);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(appBar: _buildAppBar(), body: _buildDashboardContent());
   }
 
+  // Build app bar
   AppBar _buildAppBar() {
     return AppBar(
       title: const Text(
@@ -207,6 +327,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build dashboard content
   Widget _buildDashboardContent() {
     return FutureBuilder<Map<String, dynamic>>(
       future: _dataFuture,
@@ -230,6 +351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build error state
   Widget _buildErrorState(Object error) {
     return Center(
       child: Padding(
@@ -261,26 +383,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build success state
   Widget _buildSuccessState(List<Datum> reports, Map<String, int> statistics) {
     return RefreshIndicator(
-      onRefresh: () async => _loadData(),
+      onRefresh: () async {
+        _currentPage = 1;
+        _hasMore = true;
+        _loadData();
+      },
       child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _buildStatisticsSection(statistics)),
           SliverToBoxAdapter(child: _buildReportsHeader()),
           reports.isEmpty
               ? SliverFillRemaining(child: _buildEmptyState())
               : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildReportCard(reports[index]),
-                    childCount: reports.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == reports.length) {
+                      return _hasMore
+                          ? _buildLoadingIndicator()
+                          : const SizedBox();
+                    }
+                    return _buildReportCard(reports[index]);
+                  }, childCount: reports.length + (_hasMore ? 1 : 0)),
                 ),
         ],
       ),
     );
   }
 
+  // Build loading indicator
+  Widget _buildLoadingIndicator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16.0),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  // Build statistics section
   Widget _buildStatisticsSection(Map<String, int> statistics) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -324,6 +465,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build statistic item
   Widget _buildStatisticItem(String title, int count, Color color) {
     return Column(
       children: [
@@ -355,6 +497,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build reports header
   Widget _buildReportsHeader() {
     return const Padding(
       padding: EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
@@ -365,6 +508,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build empty state
   Widget _buildEmptyState() {
     return const Center(
       child: Column(
@@ -381,6 +525,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build report card
   Widget _buildReportCard(Datum report) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -407,6 +552,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build report header
   Widget _buildReportHeader(Datum report) {
     return Row(
       children: [
@@ -446,6 +592,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build status chip
   Widget _buildStatusChip(String status) {
     final statusColors = {
       'masuk': Colors.orange,
@@ -463,6 +610,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build report content
   Widget _buildReportContent(Datum report) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,6 +640,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build report image
   Widget _buildReportImage(Datum report) {
     if (report.imageUrl == null || report.imageUrl!.isEmpty) {
       return const SizedBox();
@@ -538,6 +687,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build report footer
   Widget _buildReportFooter(Datum report) {
     return Text(
       '⏰ Dilaporkan: ${_formatDateIndonesian(report.createdAt)}',
@@ -545,6 +695,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Build action buttons
   Widget _buildActionButtons(Datum report) {
     return Row(
       children: [
@@ -584,47 +735,5 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ],
     );
-  }
-
-  Color _getStatusColor(String status) {
-    final statusColors = {
-      'masuk': Colors.orange,
-      'proses': Colors.blue,
-      'selesai': Colors.green,
-    };
-    return statusColors[status] ?? Colors.grey;
-  }
-
-  void _showDeleteConfirmation(int reportId) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Laporan'),
-        content: const Text('Apakah Anda yakin ingin menghapus laporan ini?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _handleDeleteReport(reportId);
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDateIndonesian(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      final format = DateFormat('EEEE, dd MMMM yyyy HH:mm', 'id_ID');
-      return format.format(date);
-    } catch (e) {
-      return dateString;
-    }
   }
 }

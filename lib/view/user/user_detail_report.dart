@@ -6,11 +6,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/model/report/report_detail_response.dart';
 import 'package:wali_app/model/report/report_list_response.dart';
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/date_utils.dart';
 
 class DetailLaporanScreen extends StatefulWidget {
   final int laporanId;
@@ -174,9 +174,9 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
 
   String _formatDate(String dateString) {
     try {
-      final date = DateTime.parse(dateString);
-      final format = DateFormat('EEEE, d MMMM yyyy HH:mm', 'id_ID');
-      return format.format(date);
+      final utcDate = DateTime.parse(dateString).toUtc(); // pastikan UTC
+      final localDate = utcDate.toLocal(); // convert ke lokal device
+      return IndonesianDateUtils.formatDateTime(localDate);
     } catch (e) {
       return dateString;
     }
