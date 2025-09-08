@@ -187,15 +187,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Laporan'),
-        actions: [
-          if (widget.isMyReport && !_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-          if (widget.isMyReport && _isEditing)
-            IconButton(icon: const Icon(Icons.save), onPressed: _updateLaporan),
-        ],
+        // ✅ TOMBOL EDIT DIHAPUS DARI APP BAR
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -211,7 +203,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ PERBAIKAN: Header dengan avatar dan nama pengguna yang benar
+          // ✅ PERBAIKAN: Header dengan avatar, nama pengguna, dan STATUS di samping
           Row(
             children: [
               CircleAvatar(
@@ -255,11 +247,18 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                   ],
                 ),
               ),
+              // ✅ STATUS DIPINDAHKAN KE SAMPING NAMA PROFIL
+              Chip(
+                label: Text(
+                  _laporanDetail!.status.toUpperCase(),
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+                backgroundColor: _getStatusColor(_laporanDetail!.status),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // ... (widget lainnya tetap sama)
 
           // Judul (editable jika laporan saya)
           _isEditing
@@ -353,21 +352,14 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
               ],
             ),
 
-          // Status dan Timestamp
+          // Timestamp
           Row(
             children: [
-              Chip(
-                label: Text(
-                  _laporanDetail!.status.toUpperCase(),
-                  style: const TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                backgroundColor: _getStatusColor(_laporanDetail!.status),
-              ),
               const Spacer(),
-              // Text(
-              //   _formatDate(_laporanDetail!.updatedAt),
-              //   style: const TextStyle(fontSize: 12, color: Colors.grey),
-              // ),
+              Text(
+                _formatDate(_laporanDetail!.createdAt),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
             ],
           ),
 
@@ -380,6 +372,59 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 color: Colors.grey,
                 fontStyle: FontStyle.italic,
               ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // ✅ TOMBOL EDIT DIPINDAHKAN KE BAWAH GAMBAR
+          if (widget.isMyReport && !_isEditing)
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _isEditing = true),
+                icon: const Icon(Icons.edit, size: 18),
+                label: const Text('Edit Laporan'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
+
+          // ✅ TOMBOL SIMPAN DIPINDAHKAN KE BAWAH GAMBAR
+          if (widget.isMyReport && _isEditing)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _updateLaporan,
+                  icon: const Icon(Icons.save, size: 18),
+                  label: const Text('Simpan Perubahan'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _isEditing = false),
+                  icon: const Icon(Icons.cancel, size: 18),
+                  label: const Text('Batal'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
         ],
       ),

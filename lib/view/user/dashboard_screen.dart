@@ -222,21 +222,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wali - Warga Peduli'),
+        title: const Text('Warga Peduli', style: TextStyle(fontSize: 20)),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadDashboardData,
-            tooltip: 'Refresh',
+            tooltip: 'Perbarui',
           ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            ),
-            tooltip: 'Profil',
-          ),
+          // ✅ TOMBOL PROFIL DIHAPUS DARI APP BAR
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -337,48 +331,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 2,
         margin: const EdgeInsets.all(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Bounce(
-                infinite: false,
-                child: const Icon(Icons.eco, size: 40, color: Colors.green),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Text(
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // ✅ ICON AVATAR SEPERTI DI LAPORAN
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.green.shade100,
+                  child: Text(
+                    _currentUser != null && _currentUser!.name.isNotEmpty
+                        ? _currentUser!.name[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         _currentUser != null
                             ? 'Halo, ${_currentUser!.name}!'
                             : 'Halo, Warga!',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                    ),
-                    FadeInDown(
-                      delay: const Duration(milliseconds: 100),
-                      child: const Text(
+                      const Text(
                         'Mari jaga lingkungan kita bersama',
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              FadeInDown(
-                child: IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.red),
-                  onPressed: _showLogoutConfirmation,
-                  tooltip: 'Keluar',
-                ),
-              ),
-            ],
+                // IconButton(
+                //   icon: const Icon(Icons.logout, color: Colors.red),
+                //   onPressed: _showLogoutConfirmation,
+                //   tooltip: 'Keluar',
+                // ),
+              ],
+            ),
           ),
         ),
       ),
@@ -398,49 +406,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
           autoPlayInterval: const Duration(seconds: 5),
           autoPlayCurve: Curves.fastOutSlowIn,
         ),
-        items: _carouselItems.map((item) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.green.shade200, width: 1),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 3),
+        items: _carouselItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+
+          return ZoomIn(
+            duration: const Duration(milliseconds: 700),
+            delay: Duration(milliseconds: index * 200),
+            child: ElasticIn(
+              duration: const Duration(milliseconds: 900),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.shade200, width: 1),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(item['icon']!, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['title']!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      height: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ✅ ANIMASI ICON YANG BOUNCE
+                      Bounce(
+                        from: 10,
+                        duration: const Duration(seconds: 2),
+                        infinite: true,
+                        child: Text(
+                          item['icon']!,
+                          style: const TextStyle(fontSize: 32),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // ✅ ANIMASI JUDUL
+                      JelloIn(
+                        duration: const Duration(milliseconds: 800),
+                        child: Text(
+                          item['title']!,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+
+                      // ✅ ANIMASI DESKRIPSI
+                      FlipInY(
+                        duration: const Duration(milliseconds: 700),
+                        delay: const Duration(milliseconds: 200),
+                        child: Flexible(
+                          child: Text(
+                            item['description']!,
+                            style: const TextStyle(fontSize: 11, height: 1.3),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Flexible(
-                    child: Text(
-                      item['description']!,
-                      style: const TextStyle(fontSize: 11, height: 1.3),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -450,29 +488,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSwitchMenuSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Laporan:'),
-          const SizedBox(width: 12),
-          ChoiceChip(
-            label: const Text('Laporan Saya'),
-            selected: _showMyReports,
-            onSelected: (selected) {
-              setState(() => _showMyReports = selected);
-            },
+    return SlideInDown(
+      duration: const Duration(milliseconds: 600),
+      delay: const Duration(milliseconds: 100),
+      child: FadeIn(
+        duration: const Duration(milliseconds: 700),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ✅ ANIMASI TEKS
+              FadeInLeft(
+                duration: const Duration(milliseconds: 500),
+                child: const Text('Laporan:'),
+              ),
+              const SizedBox(width: 12),
+              // ✅ ANIMASI CHIP PERTAMA
+              BounceInDown(
+                duration: const Duration(milliseconds: 700),
+                delay: const Duration(milliseconds: 200),
+                child: ChoiceChip(
+                  label: const Text('Laporan Saya'),
+                  selected: _showMyReports,
+                  onSelected: (selected) {
+                    setState(() => _showMyReports = selected);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // ✅ ANIMASI CHIP KEDUA
+              BounceInDown(
+                duration: const Duration(milliseconds: 700),
+                delay: const Duration(milliseconds: 300),
+                child: ChoiceChip(
+                  label: const Text('Laporan Warga'),
+                  selected: !_showMyReports,
+                  onSelected: (selected) {
+                    setState(() => _showMyReports = !selected);
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: const Text('Laporan Warga'),
-            selected: !_showMyReports,
-            onSelected: (selected) {
-              setState(() => _showMyReports = !selected);
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -488,9 +547,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return hasMore ? _buildLoadingIndicator() : const SizedBox();
         }
 
+        // ✅ ANIMASI FADE KE BAWAH DENGAN STAGGERED EFFECT
         return FadeInDown(
-          duration: Duration(milliseconds: 300 + (index * 100)),
-          child: _buildReportCard(reports[index]),
+          duration: const Duration(milliseconds: 600),
+          delay: Duration(milliseconds: index * 80),
+          from: 20, // Jarak dari atas saat animasi dimulai
+          child: SlideInDown(
+            duration: const Duration(milliseconds: 700),
+            delay: Duration(milliseconds: index * 60),
+            from: 10, // Jarak slide dari atas
+            child: _buildReportCard(reports[index]),
+          ),
         );
       }, childCount: reports.length + (hasMore ? 1 : 0)),
     );
