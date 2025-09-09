@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/extension/navigation.dart';
+import 'package:wali_app/utils/app_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -79,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              const Icon(Icons.eco, size: 60, color: Colors.green),
+              const AppLogo(width: 100, height: 100),
               const SizedBox(height: 20),
               const Text(
                 'Daftar Warga Peduli',
