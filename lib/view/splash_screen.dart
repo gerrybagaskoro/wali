@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/extension/navigation.dart';
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/app_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -75,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.eco, size: 80, color: Colors.white),
+            AppLogo(width: 180, height: 180),
             SizedBox(height: 20),
             _AppNameText(),
             SizedBox(height: 20),

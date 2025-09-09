@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/extension/navigation.dart';
 import 'package:wali_app/model/auth/auth_response.dart';
+import 'package:wali_app/utils/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.eco, size: 80, color: Colors.green),
+                  const AppLogo(),
                   const SizedBox(height: 20),
                   const Text(
                     'Wali - Warga Peduli',

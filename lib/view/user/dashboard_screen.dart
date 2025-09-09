@@ -12,6 +12,7 @@ import 'package:wali_app/model/auth/auth_response.dart' as auth_model;
 import 'package:wali_app/model/report/report_list_response.dart'
     as report_model;
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/app_logo_dashboard.dart';
 import 'package:wali_app/utils/carousel_items.dart';
 import 'package:wali_app/utils/snackbar_utils.dart';
 import 'package:wali_app/view/user/user_add_report.dart';
@@ -197,7 +198,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Warga Peduli', style: TextStyle(fontSize: 20)),
+        // title: const Text('Warga Peduli', style: TextStyle(fontSize: 20)),
+        title: const AppLogoDashboard(width: 140, height: 140),
         centerTitle: true,
         actions: [
           IconButton(
