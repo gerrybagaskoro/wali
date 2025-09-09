@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true; // ✅ state untuk toggle password
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -55,9 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -67,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: ListView(
-          physics: const NeverScrollableScrollPhysics(), // Nonaktifkan scroll
+          physics: const NeverScrollableScrollPhysics(),
           children: [
             Form(
               key: _formKey,
@@ -81,6 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 30),
+
+                  // Email
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -95,12 +96,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 15),
+
+                  // Password dengan toggle
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword, // ✅ pakai state
+                    decoration: InputDecoration(
                       labelText: 'Kata Sandi',
-                      prefixIcon: Icon(Icons.lock),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -109,7 +124,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 30),
+
+                  // Tombol login
                   _isLoading
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
@@ -123,8 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
-                  // Di dalam Column, setelah button login warga
                   const SizedBox(height: 15),
+
+                  // Admin login
                   TextButton(
                     onPressed: () {
                       context.pushReplacementNamed('/admin-login');
@@ -132,6 +151,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text('Masuk sebagai Admin RT/RW'),
                   ),
                   const SizedBox(height: 15),
+
+                  // Register
                   TextButton(
                     onPressed: () {
                       context.pushNamed('/register');

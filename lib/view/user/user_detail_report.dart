@@ -51,9 +51,6 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         return;
       }
 
-      print('🔍 Mengambil data dari list laporan...');
-
-      // Ambil semua laporan
       final response = await http
           .get(
             Uri.parse(Endpoint.laporan),
@@ -64,60 +61,43 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('🔍 DEBUG - List Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-
-        // Parse response list
         final listResponse = ReportListResponse.fromJson(responseData);
 
-        try {
-          // Cari laporan dengan ID yang sesuai
-          final foundReport = listResponse.data.firstWhere(
-            (report) => report.id == widget.laporanId,
+        final foundReport = listResponse.data.firstWhere(
+          (report) => report.id == widget.laporanId,
+        );
+
+        final userName = foundReport.user.name;
+
+        setState(() {
+          _laporanDetail = ReportDetailData(
+            id: foundReport.id,
+            userId: foundReport.userId.toString(),
+            judul: foundReport.judul,
+            isi: foundReport.isi,
+            status: foundReport.status,
+            createdAt: foundReport.createdAt.toString(),
+            updatedAt:
+                foundReport.updatedAt.toString() ??
+                foundReport.createdAt.toString(),
+            lokasi: foundReport.lokasi,
+            imageUrl: foundReport.imageUrl,
+            user: ReportUser(
+              id: foundReport.user.id,
+              name: userName,
+              email: foundReport.user.email,
+              emailVerifiedAt: foundReport.user.emailVerifiedAt,
+              createdAt: foundReport.user.createdAt.toString(),
+              updatedAt: foundReport.user.updatedAt.toString(),
+            ),
           );
-
-          // ✅ PERBAIKAN: Ambil data user dari report
-          final userName = foundReport.user.name;
-          final userInitial = userName.isNotEmpty
-              ? userName[0].toUpperCase()
-              : 'U';
-
-          // Convert dari model list ke model detail
-          setState(() {
-            _laporanDetail = ReportDetailData(
-              id: foundReport.id,
-              userId: foundReport.userId.toString(),
-              judul: foundReport.judul,
-              isi: foundReport.isi,
-              status: foundReport.status,
-              createdAt: foundReport.createdAt,
-              updatedAt: foundReport.updatedAt.toString(),
-              lokasi: foundReport.lokasi,
-              imageUrl: foundReport.imageUrl,
-              // ✅ TAMBAHKAN DATA USER
-              user: ReportUser(
-                id: foundReport.user.id,
-                name: userName,
-                email: foundReport.user.email,
-                emailVerifiedAt: foundReport.user.emailVerifiedAt,
-                createdAt: foundReport.user.createdAt.toString(),
-                updatedAt: foundReport.user.updatedAt.toString(),
-              ),
-            );
-            _judulController.text = foundReport.judul;
-            _isiController.text = foundReport.isi;
-            _lokasiController.text = foundReport.lokasi ?? '';
-            _isLoading = false;
-          });
-
-          print('✅ Detail laporan ditemukan: ${foundReport.judul}');
-        } catch (e) {
-          throw Exception(
-            'Laporan dengan ID ${widget.laporanId} tidak ditemukan',
-          );
-        }
+          _judulController.text = foundReport.judul;
+          _isiController.text = foundReport.isi;
+          _lokasiController.text = foundReport.lokasi ?? '';
+          _isLoading = false;
+        });
       } else {
         throw Exception(
           'HTTP ${response.statusCode}: Gagal mengambil list laporan',
@@ -146,17 +126,14 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
         body: json.encode({
           'judul': _judulController.text,
           'isi': _isiController.text,
-          'lokasi': _lokasiController.text,
+          // ❌ lokasi tidak ikut update karena API tidak mendukung
         }),
       );
 
       if (response.statusCode == 200) {
-        // Setelah update berhasil, reload data dari list
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Laporan berhasil diperbarui')),
         );
-
-        // Reload data
         await _loadLaporanDetail();
         setState(() => _isEditing = false);
       } else {
@@ -172,10 +149,11 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
     }
   }
 
-  String _formatDate(String dateString) {
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) return '-';
     try {
-      final utcDate = DateTime.parse(dateString).toUtc(); // pastikan UTC
-      final localDate = utcDate.toLocal(); // convert ke lokal device
+      final utcDate = DateTime.parse(dateString).toUtc();
+      final localDate = utcDate.toLocal();
       return IndonesianDateUtils.formatDateTime(localDate);
     } catch (e) {
       return dateString;
@@ -185,10 +163,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Laporan'),
-        // ✅ TOMBOL EDIT DIHAPUS DARI APP BAR
-      ),
+      appBar: AppBar(title: const Text('Detail Laporan')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _laporanDetail == null
@@ -203,7 +178,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ PERBAIKAN: Header dengan avatar, nama pengguna, dan STATUS di samping
+          // Header: avatar, nama, email, status
           Row(
             children: [
               CircleAvatar(
@@ -247,7 +222,6 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                   ],
                 ),
               ),
-              // ✅ STATUS DIPINDAHKAN KE SAMPING NAMA PROFIL
               Chip(
                 label: Text(
                   _laporanDetail!.status.toUpperCase(),
@@ -260,7 +234,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Judul (editable jika laporan saya)
+          // Judul
           _isEditing
               ? TextFormField(
                   controller: _judulController,
@@ -279,17 +253,8 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 ),
           const SizedBox(height: 16),
 
-          // Lokasi (editable jika laporan saya)
-          _isEditing
-              ? TextFormField(
-                  controller: _lokasiController,
-                  decoration: const InputDecoration(
-                    labelText: 'Lokasi',
-                    border: OutlineInputBorder(),
-                  ),
-                )
-              : _laporanDetail!.lokasi != null &&
-                    _laporanDetail!.lokasi!.isNotEmpty
+          // Lokasi (read-only)
+          _laporanDetail!.lokasi != null && _laporanDetail!.lokasi!.isNotEmpty
               ? Row(
                   children: [
                     const Icon(Icons.location_on, size: 16, color: Colors.grey),
@@ -305,7 +270,7 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
               : Container(),
           const SizedBox(height: 16),
 
-          // Isi (editable jika laporan saya)
+          // Isi / Deskripsi
           _isEditing
               ? TextFormField(
                   controller: _isiController,
@@ -353,30 +318,31 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
             ),
 
           // Timestamp
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Spacer(),
               Text(
-                _formatDate(_laporanDetail!.createdAt),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                'Dilaporkan: ${_formatDate(_laporanDetail!.createdAt)}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
+              if (_laporanDetail!.updatedAt != _laporanDetail!.createdAt)
+                Text(
+                  'Laporan diperbarui: ${_formatDate(_laporanDetail!.updatedAt)}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
             ],
           ),
-
-          // Info "Terakhir diperbarui"
-          if (_laporanDetail!.updatedAt != _laporanDetail!.createdAt)
-            Text(
-              'Terakhir diperbarui: ${_formatDate(_laporanDetail!.updatedAt)}',
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-
           const SizedBox(height: 16),
 
-          // ✅ TOMBOL EDIT DIPINDAHKAN KE BAWAH GAMBAR
+          // Tombol Edit / Simpan
           if (widget.isMyReport && !_isEditing)
             Center(
               child: ElevatedButton.icon(
@@ -393,8 +359,6 @@ class _DetailLaporanScreenState extends State<DetailLaporanScreen> {
                 ),
               ),
             ),
-
-          // ✅ TOMBOL SIMPAN DIPINDAHKAN KE BAWAH GAMBAR
           if (widget.isMyReport && _isEditing)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

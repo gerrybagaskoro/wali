@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'dart:convert';
 
@@ -48,6 +48,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             authResponse.data.user.email.contains('@rw.') ||
             authResponse.data.user.email.contains('@admin.') ||
             authResponse.data.user.email.contains('admin');
+        // authResponse.data.user.email.contains('@gmail'); // untuk testing
 
         if (!isAdmin) {
           ScaffoldMessenger.of(context).showSnackBar(

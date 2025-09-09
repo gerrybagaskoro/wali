@@ -1,14 +1,17 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show File; // masih boleh untuk mobile preview
 
+import 'package:flutter/foundation.dart'; // cek kIsWeb
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/extension/navigation.dart';
 import 'package:wali_app/preference/shared_preference.dart';
+import 'package:wali_app/utils/dialog_utils.dart';
+import 'package:wali_app/utils/snackbar_utils.dart';
 
 class UserAddReport extends StatefulWidget {
   const UserAddReport({super.key});
@@ -22,7 +25,9 @@ class _UserAddReportState extends State<UserAddReport> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  File? _selectedImage;
+
+  XFile? _selectedImage; // ✅ ganti File → XFile
+  Uint8List? _webImageBytes; // khusus untuk Web preview
   bool _isLoading = false;
 
   Future<void> _pickImage() async {
@@ -30,7 +35,15 @@ class _UserAddReportState extends State<UserAddReport> {
     final pickedImage = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedImage != null) {
-      setState(() => _selectedImage = File(pickedImage.path));
+      if (kIsWeb) {
+        final bytes = await pickedImage.readAsBytes();
+        setState(() {
+          _selectedImage = pickedImage;
+          _webImageBytes = bytes;
+        });
+      } else {
+        setState(() => _selectedImage = pickedImage);
+      }
     }
   }
 
@@ -45,7 +58,11 @@ class _UserAddReportState extends State<UserAddReport> {
 
       String? imageBase64;
       if (_selectedImage != null) {
-        final bytes = await _selectedImage!.readAsBytes();
+        final bytes = kIsWeb
+            ? _webImageBytes!
+            : await File(
+                _selectedImage!.path,
+              ).readAsBytes(); // ✅ handle mobile & web
         imageBase64 = base64Encode(bytes);
       }
 
@@ -65,32 +82,40 @@ class _UserAddReportState extends State<UserAddReport> {
       );
 
       if (response.statusCode == 200) {
-        // Show success message on the dashboard by returning true
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Laporan berhasil dikirim!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          context.pop(true); // Return true untuk refresh data
+          SnackbarUtils.showSuccess(context, 'Laporan berhasil dikirim!');
+          context.pop(true); // return true biar dashboard bisa refresh
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mengirim laporan: ${response.body}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          SnackbarUtils.showError(
+            context,
+            'Gagal mengirim laporan: ${response.body}',
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Error: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _confirmAndSubmit() async {
+    final confirm = await DialogUtils.showConfirmationDialog(
+      context,
+      title: "Konfirmasi",
+      message: "Apakah kamu yakin ingin mengirim laporan ini?",
+      confirmText: "Kirim",
+      cancelText: "Batal",
+    );
+
+    if (confirm) {
+      _submitReport();
     }
   }
 
@@ -112,12 +137,9 @@ class _UserAddReportState extends State<UserAddReport> {
                       labelText: 'Judul Laporan',
                       prefixIcon: Icon(Icons.title),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Judul harus diisi';
-                      }
-                      return null;
-                    },
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Judul harus diisi'
+                        : null,
                   ),
                   const SizedBox(height: 15),
                   TextFormField(
@@ -126,12 +148,9 @@ class _UserAddReportState extends State<UserAddReport> {
                       labelText: 'Lokasi',
                       prefixIcon: Icon(Icons.location_on),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Lokasi harus diisi';
-                      }
-                      return null;
-                    },
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Lokasi harus diisi'
+                        : null,
                   ),
                   const SizedBox(height: 15),
                   TextFormField(
@@ -142,21 +161,26 @@ class _UserAddReportState extends State<UserAddReport> {
                       alignLabelWithHint: true,
                       prefixIcon: Icon(Icons.description),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Deskripsi harus diisi';
-                      }
-                      return null;
-                    },
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Deskripsi harus diisi'
+                        : null,
                   ),
                   const SizedBox(height: 20),
-                  _selectedImage != null
-                      ? Image.file(
-                          _selectedImage!,
-                          height: 200,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(),
+
+                  // ✅ Preview gambar mobile vs web
+                  if (_selectedImage != null)
+                    kIsWeb
+                        ? Image.memory(
+                            _webImageBytes!,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            File(_selectedImage!.path),
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+
                   const SizedBox(height: 15),
                   OutlinedButton(
                     onPressed: _pickImage,
@@ -164,13 +188,13 @@ class _UserAddReportState extends State<UserAddReport> {
                   ),
                   const SizedBox(height: 30),
                   ElevatedButton(
-                    onPressed: _submitReport,
+                    onPressed: _confirmAndSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       minimumSize: const Size(double.infinity, 50),
                     ),
                     child: const Text(
-                      'KIRIM LAPORAN',
+                      'Kirim Laporan',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -184,11 +208,11 @@ class _UserAddReportState extends State<UserAddReport> {
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(
+                  children: const [
+                    CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     Text(
                       'Laporan sedang dikirim...',
                       style: TextStyle(
