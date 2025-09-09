@@ -85,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Email
                   TextFormField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Surel',
                       prefixIcon: Icon(Icons.email),
@@ -101,6 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Password dengan toggle
                   TextFormField(
                     controller: _passwordController,
+                    keyboardType: TextInputType.visiblePassword,
                     obscureText: _obscurePassword, // ✅ pakai state
                     decoration: InputDecoration(
                       labelText: 'Kata Sandi',
