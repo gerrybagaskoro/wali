@@ -374,8 +374,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const Text(
-                        'Mari jaga lingkungan kita bersama',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        'Mari jaga lingkungan kita bersama!',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -509,7 +509,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 duration: const Duration(milliseconds: 700),
                 delay: const Duration(milliseconds: 200),
                 child: ChoiceChip(
-                  label: const Text('Laporan Saya'),
+                  label: const Text('Saya'),
                   selected: _showMyReports,
                   onSelected: (selected) {
                     setState(() => _showMyReports = selected);
@@ -522,7 +522,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 duration: const Duration(milliseconds: 700),
                 delay: const Duration(milliseconds: 300),
                 child: ChoiceChip(
-                  label: const Text('Laporan Warga'),
+                  label: const Text('Warga'),
                   selected: !_showMyReports,
                   onSelected: (selected) {
                     setState(() => _showMyReports = !selected);
