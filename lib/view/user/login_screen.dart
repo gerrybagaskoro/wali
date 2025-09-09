@@ -66,77 +66,82 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.eco, size: 80, color: Colors.green),
-              const SizedBox(height: 20),
-              const Text(
-                'Wali - Warga Peduli',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 30),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Surel',
-                  prefixIcon: Icon(Icons.email),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Surel harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 15),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Kata Sandi',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Kata Sandi harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 30),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: const Text(
-                        'Masuk',
-                        style: TextStyle(color: Colors.white),
-                      ),
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(), // Nonaktifkan scroll
+          children: [
+            Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.eco, size: 80, color: Colors.green),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Wali - Warga Peduli',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 30),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Surel',
+                      prefixIcon: Icon(Icons.email),
                     ),
-              // Di dalam Column, setelah button login warga
-              const SizedBox(height: 15),
-              TextButton(
-                onPressed: () {
-                  context.pushReplacementNamed('/admin-login');
-                },
-                child: const Text('Masuk sebagai Admin RT/RW'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Surel harus diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Kata Sandi',
+                      prefixIcon: Icon(Icons.lock),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Kata Sandi harus diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 30),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                          child: const Text(
+                            'Masuk',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                  // Di dalam Column, setelah button login warga
+                  const SizedBox(height: 15),
+                  TextButton(
+                    onPressed: () {
+                      context.pushReplacementNamed('/admin-login');
+                    },
+                    child: const Text('Masuk sebagai Admin RT/RW'),
+                  ),
+                  const SizedBox(height: 15),
+                  TextButton(
+                    onPressed: () {
+                      context.pushNamed('/register');
+                    },
+                    child: const Text('Belum punya akun? Daftar disini'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 15),
-              TextButton(
-                onPressed: () {
-                  context.pushNamed('/register');
-                },
-                child: const Text('Belum punya akun? Daftar disini'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
