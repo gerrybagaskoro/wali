@@ -44,11 +44,11 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
         // Cek jika user adalah admin (role = 'admin' atau 'rt_rw')
         final isAdmin =
-            authResponse.data.user.email.contains('@rt.') ||
-            authResponse.data.user.email.contains('@rw.') ||
-            authResponse.data.user.email.contains('@admin.') ||
-            authResponse.data.user.email.contains('admin');
-        // authResponse.data.user.email.contains('@gmail'); // untuk testing
+            // authResponse.data.user.email.contains('@rt.') ||
+            // authResponse.data.user.email.contains('@rw.') ||
+            // authResponse.data.user.email.contains('@admin.') ||
+            // authResponse.data.user.email.contains('admin');
+            authResponse.data.user.email.contains('@gmail'); // untuk testing
 
         if (!isAdmin) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:wali_app/api/endpoint.dart';
 import 'package:wali_app/extension/navigation.dart';
 import 'package:wali_app/model/auth/auth_response.dart';
-import 'package:wali_app/utils/app_logo.dart';
+import 'package:wali_app/utils/app_logo_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -74,11 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const AppLogo(),
+                  const AppLogoDashboard(width: 200, height: 200),
                   const SizedBox(height: 20),
+                  // const Text(
+                  //   'Masuk untuk Melapor',
+                  //   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  // ),
                   const Text(
-                    'Wali - Warga Peduli',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    'Masuk untuk Melapor',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
                   ),
                   const SizedBox(height: 30),
 
@@ -151,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       context.pushReplacementNamed('/admin-login');
                     },
-                    child: const Text('Masuk sebagai Admin RT/RW'),
+                    child: const Text('Masuk sebagai Pengelola RT/RW'),
                   ),
                   const SizedBox(height: 15),
 
